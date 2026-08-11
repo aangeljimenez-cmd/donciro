@@ -1,0 +1,293 @@
+---
+import MainLayout from "../layouts/MainLayout.astro";
+import Navbar from "../components/Navbar.astro";
+import Footer from "../components/Footer.astro";
+
+
+---
+
+<MainLayout title="Nosotros">
+
+<Navbar />
+
+<div class="background">
+    <span></span><span></span><span></span><span></span>
+    <span></span><span></span><span></span><span></span>
+</div>
+
+<section class="hero">
+
+    <h1>Sobre Nosotros</h1>
+
+    <p>
+        En Don Ciro trabajamos día a día para ofrecer productos lácteos,
+        quesos y abarrotes de la mejor calidad, entregando confianza,
+        frescura y tradición a cada uno de nuestros clientes.
+    </p>
+
+</section>
+
+<section class="historia">
+
+<div class="card grande">
+
+<h2>📚 Nuestra Historia</h2>
+
+<p>
+
+Don Ciro nace con el objetivo de acercar productos frescos y de calidad a las familias chilenas. Nuestro compromiso siempre ha sido entregar el mejor servicio y mantener la confianza de nuestros clientes.
+
+</p>
+
+</div>
+
+</section>
+
+<section class="misionVision">
+
+<div class="card">
+
+<h2>🎯 Misión</h2>
+
+<p>
+Brindar productos frescos y de excelente calidad con una atención cercana y responsable.
+</p>
+
+</div>
+
+<div class="card">
+
+<h2>🚀 Visión</h2>
+
+<p>
+Ser reconocidos como una empresa líder por la calidad de nuestros productos y el compromiso con nuestros clientes.
+</p>
+
+</div>
+
+</section>
+
+<section class="valores">
+
+<h2>Nuestros Valores</h2>
+
+<div class="contenedor">
+
+<div class="valor">
+🌿
+<h3>Calidad</h3>
+</div>
+
+<div class="valor">
+🤝
+<h3>Compromiso</h3>
+</div>
+
+<div class="valor">
+🧀
+<h3>Tradición</h3>
+</div>
+
+<div class="valor">
+❤️
+<h3>Confianza</h3>
+</div>
+
+</div>
+
+</section>
+
+<section class="estadisticas">
+
+<div class="numero">
+<h2>+28670</h2>
+<p>Clientes felices</p>
+</div>
+
+<div class="numero">
+<h2>+100</h2>
+<p>Productos</p>
+</div>
+
+<div class="numero">
+<h2>100%</h2>
+<p>Calidad</p>
+</div>
+
+</section>
+
+<Footer />
+
+</MainLayout>
+
+
+<style>
+    body{
+    overflow-x:hidden;
+}
+
+.background{
+    position:fixed;
+    inset:0;
+    z-index:-1;
+    overflow:hidden;
+    background:linear-gradient(135deg,#fff9d8,#dff7d3);
+}
+
+.background span{
+    position:absolute;
+    bottom:-150px;
+    border-radius:50%;
+    background:rgba(76,175,80,.18);
+    animation:subir 20s linear infinite;
+}
+
+.background span:nth-child(1){width:120px;height:120px;left:5%;}
+.background span:nth-child(2){width:80px;height:80px;left:18%;animation-duration:16s;}
+.background span:nth-child(3){width:160px;height:160px;left:35%;}
+.background span:nth-child(4){width:70px;height:70px;left:55%;animation-duration:15s;}
+.background span:nth-child(5){width:180px;height:180px;left:70%;}
+.background span:nth-child(6){width:90px;height:90px;left:82%;}
+.background span:nth-child(7){width:140px;height:140px;left:92%;}
+.background span:nth-child(8){width:110px;height:110px;left:45%;}
+
+@keyframes subir{
+
+from{
+transform:translateY(0) rotate(0deg);
+}
+
+to{
+transform:translateY(-120vh) rotate(360deg);
+}
+
+}
+
+.hero{
+
+padding:90px 20px;
+text-align:center;
+
+}
+
+.hero h1{
+
+font-size:4rem;
+color:#fdf900;
+margin-bottom:20px;
+
+}
+
+.hero p{
+
+max-width:900px;
+margin:auto;
+font-size:1.3rem;
+
+}
+
+.historia{
+
+padding:30px;
+
+}
+
+.card{
+
+background:white;
+padding:35px;
+border-radius:25px;
+box-shadow:0 15px 40px rgba(0,0,0,.15);
+transition:.4s;
+
+}
+
+.card:hover{
+
+transform:translateY(-10px);
+
+}
+
+.grande{
+
+max-width:1100px;
+margin:auto;
+
+}
+
+.misionVision{
+
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(320px,1fr));
+gap:30px;
+padding:40px;
+
+}
+
+.valores{
+
+text-align:center;
+padding:60px 20px;
+
+}
+
+.contenedor{
+
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+gap:25px;
+margin-top:40px;
+
+}
+
+.valor{
+
+background:white;
+padding:35px;
+border-radius:20px;
+font-size:55px;
+transition:.4s;
+cursor:pointer;
+box-shadow:0 10px 25px rgba(0,0,0,.15);
+
+}
+
+.valor h3{
+    font-size: 50px;
+}
+
+.valor:hover{
+
+transform:scale(1.08) rotate(4deg);
+
+}
+
+.estadisticas{
+
+display:flex;
+justify-content:center;
+gap:60px;
+flex-wrap:wrap;
+padding:80px 20px;
+
+}
+
+.numero{
+
+background:#2e7d32;
+color:white;
+padding:30px;
+width:220px;
+border-radius:20px;
+transition:.4s;
+text-align: center;
+}
+
+.numero h2{
+
+font-size:2rem;
+
+}
+
+
+</style>
