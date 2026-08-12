@@ -6,6 +6,9 @@ dist/
 # dependencies
 node_modules/
 
+#para subir actualizaciones es git add . despues git push
+
+
 # logs
 npm-debug.log*
 yarn-debug.log*

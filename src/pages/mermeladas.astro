@@ -4,41 +4,175 @@ import Navbar from "../components/Navbar.astro";
 import Footer from "../components/Footer.astro";
 ---
 
-<MainLayout title="Quesos">
+<MainLayout title="mermeladas">
+    <Navbar />
 
-<Navbar />
+    <div class="mermeladas-container">
+        <h1 class="titulo-seccion">Nuestras mermeladas</h1>
 
-<div class="container mt-5">
+        <div class="card-productos">
+            <div class="product-card">
+                <img
+                    class="product-card__image"
+                    src="/donciro/src/img/Mermelada frutilla (Tatito).png"
+                    alt="Mermelada de frutilla"   
+                />
+                <div class="product-card__content">
+                    <h3 class="product-card__title">Mermelada de frutilla </h3>
+                    <p class="product-card__description">
+                        Marca: Tatito
+                    </p>
+                    <div class="product-card__price">
+                        <span class="product-card__price-label">6000</span>
+                        <span class="product-card__price-value"></span>
+                    </div>
+                </div>
+            </div>
 
-<h1 class="titulo-seccion">Nuestros Quesos</h1>
+            <div class="product-card">
+                <img class="product-card__image" src="/src/img/P017017-2.webp" alt="" />
+                <div class="product-card__content">
+                    <h3 class="product-card__title">Queso Mozarella</h3>
+                    <p class="product-card__description">Especial para pizzas</p>
+                    <div class="product-card__price">
+                        <span class="product-card__price-label">2500</span>
+                        <span class="product-card__price-value">1/4kg</span>
+                    </div>
+                </div>
+            </div>
 
-<div class="grid-productos">
+            <div class="product-card">
+                <img class="product-card__image" src="" alt="" />
+                <div class="product-card__content">
+                    <h3 class="product-card__title"></h3>
+                    <p class="product-card__description"></p>
+                    <div class="product-card__price">
+                        <span class="product-card__price-label"></span>
+                        <span class="product-card__price-value"></span>
+                    </div>
+                </div>
+            </div>
 
-<div class="card">
-<div class="card-body">
-<h3>Queso Fresco</h3>
-<p>Queso artesanal.</p>
-</div>
-</div>
+            <div class="product-card">
+                <img class="product-card__image" src="" alt="" />
+                <div class="product-card__content">
+                    <h3 class="product-card__title"></h3>
+                    <p class="product-card__description"></p>
+                    <div class="product-card__price">
+                        <span class="product-card__price-label"></span>
+                        <span class="product-card__price-value"></span>
+                    </div>
+                </div>
+            </div>
 
-<div class="card">
-<div class="card-body">
-<h3>Queso Chanco</h3>
-<p>Queso tradicional.</p>
-</div>
-</div>
+            <div class="product-card">
+                <img class="product-card__image" src="" alt="" />
+                <div class="product-card__content">
+                    <h3 class="product-card__title"></h3>
+                    <p class="product-card__description"></p>
+                    <div class="product-card__price">
+                        <span class="product-card__price-label"></span>
+                        <span class="product-card__price-value"></span>
+                    </div>
+                </div>
+            </div>
 
-<div class="card">
-<div class="card-body">
-<h3>Queso Mantecoso</h3>
-<p>Muy cremoso.</p>
-</div>
-</div>
+            <div class="product-card">
+                <img class="product-card__image" src="" alt="" />
+                <div class="product-card__content">
+                    <h3 class="product-card__title"></h3>
+                    <p class="product-card__description"></p>
+                    <div class="product-card__price">
+                        <span class="product-card__price-label"></span>
+                        <span class="product-card__price-value"></span>
+                    </div>
+                </div>
+            </div>
 
-</div>
+        </div>
+        <div class="card-productos">
+            <div class="product-card">
+                <img
+                    class="product-card__image"
+                    src="/src/img/F_gauda-aleman-ammenlander-amarillo3928.jpg"
+                    alt="queso gauda"
+                />
+                <div class="product-card__content">
+                    <h3 class="product-card__title">Gauda Alemán Ammerland</h3>
+                    <p class="product-card__description">
+                        Queso Gauda Alemán en barra
+                    </p>
+                    <div class="product-card__price">
+                        <span class="product-card__price-label">2500</span>
+                        <span class="product-card__price-value">1/4kg</span>
+                    </div>
+                </div>
+            </div>
 
-</div>
+            <div class="product-card">
+                <img class="product-card__image" src="/src/img/P017017-2.webp" alt="" />
+                <div class="product-card__content">
+                    <h3 class="product-card__title">Queso Mozarella</h3>
+                    <p class="product-card__description">Especial para pizzas</p>
+                    <div class="product-card__price">
+                        <span class="product-card__price-label">2500</span>
+                        <span class="product-card__price-value">1/4kg</span>
+                    </div>
+                </div>
+            </div>
 
-<Footer />
+            <div class="product-card">
+                <img class="product-card__image" src="" alt="" />
+                <div class="product-card__content">
+                    <h3 class="product-card__title"></h3>
+                    <p class="product-card__description"></p>
+                    <div class="product-card__price">
+                        <span class="product-card__price-label"></span>
+                        <span class="product-card__price-value"></span>
+                    </div>
+                </div>
+            </div>
 
+            <div class="product-card">
+                <img class="product-card__image" src="" alt="" />
+                <div class="product-card__content">
+                    <h3 class="product-card__title"></h3>
+                    <p class="product-card__description"></p>
+                    <div class="product-card__price">
+                        <span class="product-card__price-label"></span>
+                        <span class="product-card__price-value"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <img class="product-card__image" src="" alt="" />
+                <div class="product-card__content">
+                    <h3 class="product-card__title"></h3>
+                    <p class="product-card__description"></p>
+                    <div class="product-card__price">
+                        <span class="product-card__price-label"></span>
+                        <span class="product-card__price-value"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-card">
+                <img class="product-card__image" src="" alt="" />
+                <div class="product-card__content">
+                    <h3 class="product-card__title"></h3>
+                    <p class="product-card__description"></p>
+                    <div class="product-card__price">
+                        <span class="product-card__price-label"></span>
+                        <span class="product-card__price-value"></span>
+                    </div>
+                </div>
+            </div>
+            
+
+        </div>
+
+    </div>
+
+    <Footer />
 </MainLayout>
