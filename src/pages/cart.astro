@@ -1,0 +1,129 @@
+---
+import MainLayout from "../layouts/MainLayout.astro";
+import Navbar from "../components/Navbar.astro";
+import Footer from "../components/Footer.astro";
+---
+
+<MainLayout title="Carrito">
+    <Navbar />
+    <div class="carrito-container">
+        <h1 class="titulo-seccion">Tu carrito</h1>
+
+        <div id="carrito-vacio" style="display:none; text-align:center; margin:40px;">
+            <p>Tu carrito está vacío.</p>
+            <a href="/producto">Ver productos</a>
+        </div>
+
+        <div id="carrito-items"></div>
+
+        <div id="carrito-resumen" class="carrito-resumen" style="display:none;">
+            <p class="carrito-total">Total: <span id="total-carrito">$0</span></p>
+            <button id="vaciar-carrito" class="btn-secundario">Vaciar carrito</button>
+            <button id="ir-a-pagar" class="btn-comprar">Proceder al pago</button>
+        </div>
+    </div>
+    <Footer />
+</MainLayout>
+
+<script>
+  import { getCart, updateQuantity, removeFromCart, clearCart } from "../lib/cart.js";
+
+  const contenedor = document.getElementById("carrito-items");
+  const resumen = document.getElementById("carrito-resumen");
+  const vacioMsg = document.getElementById("carrito-vacio");
+  const totalSpan = document.getElementById("total-carrito");
+
+  async function render() {
+    const cart = getCart();
+
+    if (cart.length === 0) {
+      contenedor.innerHTML = "";
+      resumen.style.display = "none";
+      vacioMsg.style.display = "block";
+      return;
+    }
+    vacioMsg.style.display = "none";
+
+    const res = await fetch("/api/productos");
+    const productos = await res.json();
+
+    let total = 0;
+    contenedor.innerHTML = "";
+
+    cart.forEach((item) => {
+      const producto = productos.find((p) => p.id === item.id);
+      if (!producto) return;
+
+      const esKg = producto.unidad === "kg";
+      const subtotal = producto.precio * item.cantidad;
+      total += subtotal;
+
+      const cantidadTexto = esKg
+        ? `${(item.cantidad * 1000).toFixed(0)} gr`
+        : `${item.cantidad} un.`;
+
+      const fila = document.createElement("div");
+      fila.className = "carrito-fila";
+      fila.innerHTML = `
+        <span class="carrito-fila__nombre">${producto.name}</span>
+        <span class="carrito-fila__cantidad">${cantidadTexto}</span>
+        <span class="carrito-fila__subtotal">$${subtotal.toLocaleString("es-CL")}</span>
+        <button class="btn-quitar" data-id="${item.id}">Quitar</button>
+      `;
+      contenedor.appendChild(fila);
+    });
+
+    totalSpan.textContent = `$${total.toLocaleString("es-CL")}`;
+    resumen.style.display = "block";
+  }
+
+  contenedor.addEventListener("click", (e) => {
+    if (e.target.classList.contains("btn-quitar")) {
+      removeFromCart(Number(e.target.dataset.id));
+      render();
+    }
+  });
+
+  document.getElementById("vaciar-carrito").addEventListener("click", () => {
+    clearCart();
+    render();
+  });
+
+  document.getElementById("ir-a-pagar").addEventListener("click", () => {
+    window.location.href = "/checkout";
+  });
+
+  render();
+</script>
+
+<style>
+.carrito-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px;
+}
+.carrito-fila {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr auto;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid #eee;
+}
+.btn-quitar {
+    background: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+.carrito-resumen {
+    margin-top: 20px;
+    text-align: right;
+}
+.carrito-total {
+    font-size: 1.4rem;
+    font-weight: bold;
+}
+</style>

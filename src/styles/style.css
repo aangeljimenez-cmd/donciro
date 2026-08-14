@@ -84,7 +84,7 @@ body {
 .hero {
   background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
               url("https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=1500&q=80");
-  
+
   background-position: center;
   min-height: 70vh;
   display: flex;
@@ -155,38 +155,40 @@ footer p {
     color: #eeff00;
 }
 
-/* estilos de productos */
+/* ======== ESTILOS DE PRODUCTOS ======== */
+
 .card-productos {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1.5rem;
   margin: 30px;
   padding: 30px;
+  align-items: stretch;
 }
-
-.card-productos img{
-  width: 200px;
-  height: 200px;
-}
-
 
 .product-card {
   display: flex;
   flex-direction: column;
   width: 100%;
   background-color: bisque;
-  padding: 10px;
-  align-items: center;
+  border-radius: 24px;
+  overflow: hidden;
+  height: 100%;
 }
 
 .product-card__image {
   width: 100%;
+  height: 220px;
+  object-fit: cover;
   display: block;
+  flex-shrink: 0;
 }
 
 .product-card__content {
   display: flex;
   flex-direction: column;
+  flex: 1;
+  padding: 16px;
 }
 
 .product-card__title {
@@ -201,10 +203,96 @@ footer p {
   display: flex;
   align-items: baseline;
   gap: 0.5rem;
+  margin-top: auto;
 }
 
-.product-card__price-label {
+/* Botón comprar, base para todas las cards */
+.btn-comprar {
+    margin-top: 0.75rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: opacity 0.2s;
+}
+.btn-comprar:hover { opacity: 0.85; }
+.btn-comprar:disabled { opacity: 0.6; cursor: default; }
+
+/* Quesos: amarillo */
+.quesos-container .product-card {
+    background-color: #f7e2a0;
+    border: 1px solid #e6c866;
+}
+.quesos-container .btn-comprar {
+    background-color: #d9a441;
+    color: #fff;
 }
 
-.product-card__price-value {
+/* Mermeladas: tonos berries */
+.mermeladas-container .product-card {
+    background-color: #f3d4de;
+    border: 1px solid #d97a95;
+}
+.mermeladas-container .btn-comprar {
+    background-color: #b3395d;
+    color: #fff;
+}
+
+/* Huevos: beige */
+.huevos-container .product-card {
+    background-color: #f0e6d2;
+    border: 1px solid #d8c8a4;
+}
+.huevos-container .btn-comprar {
+    background-color: #b8a06a;
+    color: #fff;
+}
+
+/* Encurtidos: aceite de oliva */
+.encurtidos-container .product-card {
+    background-color: #d8dba0;
+    border: 1px solid #a8ab5f;
+}
+.encurtidos-container .btn-comprar {
+    background-color: #7d8a3f;
+    color: #fff;
+}
+
+/* Frutos secos: varios colores tipo frutos secos, alternados */
+.frutos-secos-container .product-card:nth-child(5n+1) {
+    background-color: #d9b48f; border: 1px solid #b9895f; /* almendra */
+}
+.frutos-secos-container .product-card:nth-child(5n+2) {
+    background-color: #a9714a; border: 1px solid #855530; /* nuez */
+}
+.frutos-secos-container .product-card:nth-child(5n+3) {
+    background-color: #e3c9a0; border: 1px solid #c7a56e; /* maní */
+}
+.frutos-secos-container .product-card:nth-child(5n+4) {
+    background-color: #8c6142; border: 1px solid #6b4a30; /* avellana */
+}
+.frutos-secos-container .product-card:nth-child(5n+5) {
+    background-color: #ecd9b0; border: 1px solid #d4b87c; /* castaña de cajú */
+}
+.frutos-secos-container .btn-comprar {
+    background-color: #6b4a30;
+    color: #fff;
+}
+
+.cantidad-selector {
+    display: flex;
+    gap: 8px;
+    margin-top: 0.75rem;
+}
+.select-gramos {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+.cantidad-selector .btn-comprar {
+    flex: 1;
+    margin-top: 0;
 }
