@@ -1,0 +1,1 @@
+actualizar los ids de los productos en la base de datos, hacer un servidor o ver donde subir la pagina para el publico, arreglar el boton de compras de los productos unitarios, arreglar carrito con detalle de compra, vincular boton pagar en carrito de compras para que mande un mensaje a toño con el detalle de la compra.
