@@ -1,0 +1,273 @@
+---
+import MainLayout from "../layouts/MainLayout.astro";
+import Navbar from "../components/Navbar.astro";
+import Footer from "../components/Footer.astro";
+import Card from "../components/Card.astro";
+import { pool } from "../lib/db.js";
+
+const [productos] = await pool.query(
+  `SELECT p.id, p.name, p.precio, p.imagen, p.cantidad_minima,
+          u.name AS unidad, c.name AS categoria
+   FROM productos p
+   JOIN categoria c ON p.id_cat = c.id
+   JOIN unidad_medida u ON p.id_umedida = u.id
+   WHERE p.disponible = 1 AND p.stock > 0
+   ORDER BY p.name`
+);
+
+function getGrupo(categoria) {
+  const cat = (categoria || "").toLowerCase();
+  if (cat.startsWith("queso")) return "quesos";
+  if (cat === "mermeladas") return "mermeladas";
+  if (cat === "huevos") return "huevos";
+  if (["encurtidos", "aceitunas"].includes(cat)) return "encurtidos";
+  if (["frutos secos", "semillas"].includes(cat)) return "frutos-secos";
+  return "default";
+}
+---
+
+<MainLayout title="Productos">
+
+<Navbar />
+<input
+  type="text"
+  placeholder="🔍 Buscar un producto..."
+  class="buscar"
+  id="buscador-productos"
+/>
+<Card></Card>
+
+<div class="grid-todos-productos" id="grid-productos">
+  {productos.map((p) => (
+    <div
+      class={`producto producto--${getGrupo(p.categoria)}`}
+      data-name={p.name.toLowerCase()}
+      data-categoria={p.categoria.toLowerCase()}
+    >
+      <img src={p.imagen || "/src/img/images.jfif"} alt={p.name} />
+      <div class="producto-info">
+        <h3>{p.name}</h3>
+        <p>{p.categoria} · {p.unidad}</p>
+        <p class="precio">${Number(p.precio).toLocaleString('es-CL')}</p>
+
+        {(p.unidad === 'kg' || p.unidad === 'litro') ? (
+          <div class="cantidad-selector">
+            <input
+              type="number"
+              class="input-gramos"
+              data-id={p.id}
+              data-min={Number(p.cantidad_minima) * 1000}
+              min={Number(p.cantidad_minima) * 1000}
+              step="50"
+              value={Number(p.cantidad_minima) * 1000}
+            />
+            <span class="cantidad-selector__sufijo">{p.unidad === 'kg' ? 'gr' : 'ml'}</span>
+            <button class="btn-comprar" data-id={p.id} data-unidad={p.unidad}>Agregar</button>
+          </div>
+        ) : (
+          <div class="cantidad-selector">
+            <input
+              type="number"
+              class="input-unidades"
+              data-id={p.id}
+              data-min={Number(p.cantidad_minima)}
+              min={Number(p.cantidad_minima)}
+              step="1"
+              value={Number(p.cantidad_minima)}
+            />
+            <button class="btn-comprar" data-id={p.id} data-unidad={p.unidad}>Comprar</button>
+          </div>
+        )}
+      </div>
+    </div>
+  ))}
+</div>
+
+<p id="sin-resultados" style="display:none; text-align:center; margin:30px;">
+  No se encontraron productos.
+</p>
+
+<Footer />
+
+</MainLayout>
+
+<script>
+  import { addToCart } from "../lib/cart.js";
+
+  const input = document.getElementById("buscador-productos");
+  const grid = document.getElementById("grid-productos");
+  const sinResultados = document.getElementById("sin-resultados");
+  const items = Array.from(grid.querySelectorAll(".producto"));
+
+  input.addEventListener("input", () => {
+    const query = input.value.trim().toLowerCase();
+    let visibles = 0;
+
+    items.forEach((item) => {
+      const coincide =
+        item.dataset.name.includes(query) || item.dataset.categoria.includes(query);
+      item.style.display = coincide ? "" : "none";
+      if (coincide) visibles++;
+    });
+
+    sinResultados.style.display = visibles === 0 ? "block" : "none";
+  });
+
+  document.addEventListener("click", (e) => {
+    if (e.target.classList.contains("btn-comprar")) {
+      const id = Number(e.target.dataset.id);
+      const esPeso = e.target.dataset.unidad === "kg" || e.target.dataset.unidad === "litro";
+      let cantidad = 1;
+
+      if (esPeso) {
+        const input = document.querySelector(`.input-gramos[data-id="${id}"]`);
+        const min = Number(input.dataset.min);
+        const valor = Math.max(min, Number(input.value) || min);
+        input.value = valor;
+        cantidad = valor / 1000;
+      } else {
+        const input = document.querySelector(`.input-unidades[data-id="${id}"]`);
+        const min = Number(input.dataset.min);
+        const unidades = Math.max(min, Math.floor(Number(input.value)) || min);
+        input.value = unidades;
+        cantidad = unidades;
+      }
+
+      addToCart(id, cantidad);
+      const original = e.target.textContent;
+      e.target.textContent = "¡Agregado!";
+      e.target.disabled = true;
+      setTimeout(() => {
+        e.target.textContent = original;
+        e.target.disabled = false;
+      }, 1000);
+    }
+  });
+</script>
+
+<style>
+
+.buscar{
+width:70%;
+max-width:600px;
+padding:18px;
+border-radius:40px;
+border:none;
+box-shadow:0 5px 20px rgba(0,0,0,.2);
+font-size:18px;
+margin:40px auto;
+display:block;
+}
+
+.grid-todos-productos{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+gap:30px;
+padding:0 20px 60px;
+}
+
+.producto{
+background:white;
+border-radius:25px;
+overflow:hidden;
+box-shadow:0 15px 35px rgba(0,0,0,.15);
+transition:.4s;
+}
+
+.producto:hover{
+transform:translateY(-15px) scale(1.05);
+box-shadow:0 25px 50px rgba(0,0,0,.30);
+}
+
+.producto img{
+width:100%;
+height:250px;
+object-fit:cover;
+transition:.5s;
+}
+
+.producto:hover img{
+transform:scale(1.15);
+}
+
+.producto-info{
+padding:15px;
+}
+
+.producto-info .precio{
+font-weight:bold;
+font-size:1.2rem;
+margin-top:5px;
+}
+
+.cantidad-selector{
+display:flex;
+gap:8px;
+margin-top:10px;
+}
+
+.select-gramos{
+flex:1;
+padding:8px;
+border-radius:6px;
+border:1px solid #ccc;
+}
+
+.input-gramos, .input-unidades{
+flex:1;
+padding:8px;
+border-radius:6px;
+border:1px solid #ccc;
+font-size:16px;
+width:100%;
+}
+
+.cantidad-selector__sufijo{
+font-size:14px;
+color:var(--text-secondary, #555);
+}
+
+.producto button{
+background:#30af25;
+color:white;
+border:none;
+padding:15px;
+width:100%;
+font-size:18px;
+cursor:pointer;
+transition:.3s;
+}
+
+.producto button:hover{
+opacity:.85;
+}
+
+/* Quesos: amarillo */
+.producto--quesos{ background:#f7e2a0; border:2px solid #e6c866; }
+.producto--quesos h3, .producto--quesos p, .producto--quesos .precio{ color:#6b4412; }
+.producto--quesos button{ background:#d9a441; }
+
+/* Mermeladas: berries */
+.producto--mermeladas{ background:#f3d4de; border:2px solid #d97a95; }
+.producto--mermeladas h3, .producto--mermeladas p, .producto--mermeladas .precio{ color:#7a1a3f; }
+.producto--mermeladas button{ background:#b3395d; }
+
+/* Huevos: beige */
+.producto--huevos{ background:#f0e6d2; border:2px solid #d8c8a4; }
+.producto--huevos h3, .producto--huevos p, .producto--huevos .precio{ color:#5c4a1e; }
+.producto--huevos button{ background:#b8a06a; }
+
+/* Encurtidos: aceite de oliva */
+.producto--encurtidos{ background:#d8dba0; border:2px solid #a8ab5f; }
+.producto--encurtidos h3, .producto--encurtidos p, .producto--encurtidos .precio{ color:#3f4a1f; }
+.producto--encurtidos button{ background:#7d8a3f; }
+
+/* Frutos secos y semillas: café */
+.producto--frutos-secos{ background:#d9b48f; border:2px solid #b9895f; }
+.producto--frutos-secos h3, .producto--frutos-secos p, .producto--frutos-secos .precio{ color:#2e1b0f; }
+.producto--frutos-secos button{ background:#6b4a30; }
+
+body{
+background: #fdf6e8;
+}
+</style>

@@ -1,0 +1,267 @@
+---
+import Layout from '../layouts/MainLayout.astro';
+import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
+---
+<Layout title="Ingresar">
+  <Navbar />
+  <main class="auth-page">
+    <div class="auth-card">
+      <h1 class="titulo-seccion">Mis pedidos</h1>
+      <p class="auth-subtitulo">Ingresa con tu RUT y contraseña para ver el estado de tus pedidos.</p>
+
+      <form id="form-login" class="auth-form">
+        <div class="campo">
+          <label for="nombre">Nombre completo</label>
+          <input type="text" id="nombre" name="nombre" required />
+        </div>
+
+        <div class="campo">
+          <label for="rut">RUT</label>
+          <input type="text" id="rut" name="rut" placeholder="12.345.678-9" required />
+        </div>
+
+        <div class="campo">
+          <label for="password">Contraseña</label>
+          <input type="password" id="password" name="password" required />
+        </div>
+
+        <button type="submit" class="btn-principal auth-btn">Ingresar</button>
+      </form>
+
+      <p id="mensaje" class="auth-mensaje"></p>
+
+      <div id="lista-pedidos" class="lista-pedidos"></div>
+
+      <p class="auth-switch">
+        ¿No tienes cuenta? <a href="/registro">Regístrate aquí</a>
+      </p>
+    </div>
+  </main>
+  <Footer />
+</Layout>
+
+<script>
+  const ESTADOS_LABEL = {
+    pendiente: 'Pendiente',
+    en_preparacion: 'En preparación',
+    en_ruta: 'En ruta',
+    entregado: 'Entregado',
+  };
+
+  function formatearFecha(fecha) {
+    return new Date(fecha).toLocaleString('es-CL', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  }
+  function formatearMonto(monto) {
+    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(monto);
+  }
+
+  document.getElementById('form-login').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const mensaje = document.getElementById('mensaje');
+    const lista = document.getElementById('lista-pedidos');
+    mensaje.textContent = '';
+    mensaje.className = 'auth-mensaje';
+    lista.innerHTML = '';
+
+    const body = {
+      nombre: form.nombre.value,
+      rut: form.rut.value,
+      password: form.password.value,
+    };
+
+    const boton = form.querySelector('button');
+    const textoOriginal = boton.textContent;
+    boton.disabled = true;
+    boton.textContent = 'Ingresando...';
+
+    try {
+      const res = await fetch('/api/clientes/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al iniciar sesión');
+
+      if (data.pedidos.length === 0) {
+        mensaje.textContent = 'No tienes pedidos registrados todavía.';
+        return;
+      }
+
+      mensaje.textContent = '';
+      lista.innerHTML = data.pedidos.map((p) => `
+        <a class="pedido-card pedido-card--${p.estado}" href="/seguimiento?pedido=${p.id}">
+          <div class="pedido-card__header">
+            <span class="pedido-card__id">Pedido #${p.id}</span>
+            <span class="pedido-card__estado pedido-card__estado--${p.estado}">${ESTADOS_LABEL[p.estado] ?? p.estado}</span>
+          </div>
+          <div class="pedido-card__body">
+            <span class="pedido-card__fecha">${formatearFecha(p.created_at)}</span>
+            <span class="pedido-card__total">${formatearMonto(p.total)}</span>
+          </div>
+        </a>
+      `).join('');
+    } catch (err) {
+      mensaje.textContent = err.message;
+      mensaje.classList.add('error');
+    } finally {
+      boton.disabled = false;
+      boton.textContent = textoOriginal;
+    }
+  });
+</script>
+
+<style is:global>
+  .auth-page {
+    display: flex;
+    justify-content: center;
+    padding: 3rem 1rem;
+    min-height: 60vh;
+  }
+  .auth-card {
+    background: var(--bg-surface, #fff);
+    width: 100%;
+    max-width: 460px;
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  }
+  .auth-card .titulo-seccion {
+    margin: 0 0 0.4rem;
+    text-align: left;
+  }
+  .auth-card .titulo-seccion::after {
+    margin: 10px 0 0;
+  }
+  .auth-subtitulo {
+    color: var(--text-muted, #666);
+    font-size: 0.95rem;
+    margin-bottom: 1.75rem;
+  }
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+  .campo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .campo label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted, #555);
+  }
+  .campo input {
+    padding: 0.7rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .campo input:focus {
+    outline: none;
+    border-color: var(--primary, #007dfa);
+    box-shadow: 0 0 0 3px rgba(0, 125, 250, 0.15);
+  }
+  .auth-btn {
+    margin-top: 0.5rem;
+    width: 100%;
+    text-align: center;
+    border: none;
+    cursor: pointer;
+    background-color: var(--primary, #007dfa);
+  }
+  .auth-btn:hover {
+    background-color: var(--primary-dark, #000acb);
+  }
+  .auth-mensaje {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    text-align: center;
+    min-height: 1.2em;
+  }
+  .auth-mensaje.error { color: #c0392b; font-weight: 600; }
+  .lista-pedidos {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    margin-top: 0.5rem;
+  }
+  .pedido-card {
+    display: block;
+    padding: 1.1rem 1.25rem;
+    border: 1px solid #e3e8f0;
+    border-radius: 16px;
+    background: #f4f7fb;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+  }
+  .pedido-card--pendiente { background: #fef3e2; border-color: #f5cb8c; }
+  .pedido-card--en_preparacion { background: #fdf0dc; border-color: #eab26b; }
+  .pedido-card--en_ruta { background: #e8f0fe; border-color: #a9c6f7; }
+  .pedido-card--entregado { background: #e7f6ec; border-color: #9bd7ae; }
+  .pedido-card:hover {
+    border-color: var(--primary, #007dfa);
+    box-shadow: 0 8px 20px rgba(0, 125, 250, 0.15);
+    transform: translateY(-2px);
+  }
+  .pedido-card__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .pedido-card__id {
+    font-weight: 700;
+    font-size: 1.05rem;
+  }
+  .pedido-card__estado {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 4px 14px;
+    border-radius: 20px;
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  }
+  .pedido-card__estado--pendiente { background: #f59e0b; }
+  .pedido-card__estado--en_preparacion { background: #d97706; }
+  .pedido-card__estado--en_ruta { background: #2563eb; }
+  .pedido-card__estado--entregado { background: #16a34a; }
+  .pedido-card__body {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .pedido-card__fecha {
+    font-size: 0.85rem;
+    color: var(--text-muted, #999);
+  }
+  .pedido-card__total {
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: var(--primary-dark, #000acb);
+  }
+  .auth-switch {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted, #666);
+  }
+  .auth-switch a {
+    color: var(--primary, #007dfa);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .auth-switch a:hover {
+    text-decoration: underline;
+  }
+</style>

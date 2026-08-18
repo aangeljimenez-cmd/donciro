@@ -1,0 +1,108 @@
+---
+import MainLayout from "../layouts/MainLayout.astro";
+import Navbar from "../components/Navbar.astro";
+import Footer from "../components/Footer.astro";
+import { pool } from "../lib/db.js";
+
+const [productos] = await pool.query(
+  `SELECT p.id, p.name, p.precio, p.imagen, p.cantidad_minima, u.name AS unidad
+   FROM productos p
+   JOIN categoria c ON p.id_cat = c.id
+   JOIN unidad_medida u ON p.id_umedida = u.id
+   WHERE c.name = 'huevos' AND p.disponible = 1 AND p.stock > 0
+   ORDER BY p.name`
+);
+---
+
+<MainLayout title="Huevos">
+    <Navbar />
+    <div class="huevos-container">
+        <h1 class="titulo-seccion">Nuestros Huevos</h1>
+
+        <div class="card-productos">
+            {productos.map((p) => (
+                <div class="product-card">
+                    <img
+                        class="product-card__image"
+                        src={p.imagen || "/src/img/images.jfif"}
+                        alt={p.name}
+                    />
+                    <div class="product-card__content">
+                        <h3 class="product-card__title">{p.name}</h3>
+                        <p class="product-card__description">{p.name}</p>
+                        <div class="product-card__price">
+                            <span class="product-card__price-label">${Number(p.precio).toLocaleString('es-CL')}</span>
+                            <span class="product-card__price-value">{p.unidad}</span>
+                        </div>
+
+                        {(p.unidad === 'kg' || p.unidad === 'litro') ? (
+                            <div class="cantidad-selector">
+                                <input
+                                    type="number"
+                                    class="input-gramos"
+                                    data-id={p.id}
+                                    data-min={Number(p.cantidad_minima) * 1000}
+                                    min={Number(p.cantidad_minima) * 1000}
+                                    step="50"
+                                    value={Number(p.cantidad_minima) * 1000}
+                                />
+                                <span class="cantidad-selector__sufijo">{p.unidad === 'kg' ? 'gr' : 'ml'}</span>
+                                <button class="btn-comprar" data-id={p.id} data-unidad={p.unidad}>Agregar</button>
+                            </div>
+                        ) : (
+                            <div class="cantidad-selector">
+                                <input
+                                    type="number"
+                                    class="input-unidades"
+                                    data-id={p.id}
+                                    data-min={Number(p.cantidad_minima)}
+                                    min={Number(p.cantidad_minima)}
+                                    step="1"
+                                    value={Number(p.cantidad_minima)}
+                                />
+                                <button class="btn-comprar" data-id={p.id} data-unidad={p.unidad}>Comprar</button>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            ))}
+        </div>
+    </div>
+
+    <Footer />
+</MainLayout>
+
+<script>
+  import { addToCart } from "../lib/cart.js";
+
+  document.addEventListener("click", (e) => {
+    if (e.target.classList.contains("btn-comprar")) {
+      const id = Number(e.target.dataset.id);
+      const esPeso = e.target.dataset.unidad === "kg" || e.target.dataset.unidad === "litro";
+      let cantidad = 1;
+
+      if (esPeso) {
+        const input = document.querySelector(`.input-gramos[data-id="${id}"]`);
+        const min = Number(input.dataset.min);
+        const valor = Math.max(min, Number(input.value) || min);
+        input.value = valor;
+        cantidad = valor / 1000;
+      } else {
+        const input = document.querySelector(`.input-unidades[data-id="${id}"]`);
+        const min = Number(input.dataset.min);
+        const unidades = Math.max(min, Math.floor(Number(input.value)) || min);
+        input.value = unidades;
+        cantidad = unidades;
+      }
+
+      addToCart(id, cantidad);
+      const original = e.target.textContent;
+      e.target.textContent = "¡Agregado!";
+      e.target.disabled = true;
+      setTimeout(() => {
+        e.target.textContent = original;
+        e.target.disabled = false;
+      }, 1000);
+    }
+  });
+</script>

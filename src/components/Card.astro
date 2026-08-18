@@ -1,0 +1,128 @@
+---
+const { titulo, descripcion, imagen, enlace } = Astro.props;
+---
+<section class="categorias">
+
+    <h2>Nuestras Categorías</h2>
+
+    <div class="grid">
+
+        <a href="/quesos" class="card">
+            <h3>🧀 Quesos</h3>
+            <p>Queso fresco, Mantecoso, Parmesano y muchos más.</p>
+        </a>
+
+        <a href="/mermeladas" class="card">
+            <h3>🍇 Mermeladas</h3>
+            <p>Varios sabores y de excelente calidad.</p>
+        </a>
+
+        <a href="/huevos" class="card">
+            <h3>🥚 Huevos</h3>
+            <p>Naturales y sabrosos.</p>
+        </a>
+
+        <a href="/frutos_secos" class="card">
+            <h3>🥜 Frutos Secos</h3>
+            <p>Ideal para tablas .</p>
+        </a>
+
+        <a href="/encurtidos" class="card">
+            <h3>🥫 Encurtidos</h3>
+            <p>Para cocinar y picar.</p>
+        </a>
+    </div>
+
+</section>
+<style>
+  .botones{
+    display:flex;
+    justify-content:center;
+    gap:20px;
+    flex-wrap:wrap;
+}
+
+.btn,.btn-secundario{
+    padding:15px 30px;
+    border-radius:40px;
+    text-decoration:none;
+    font-weight:bold;
+    transition:.3s;
+}
+
+.btn{
+    background:#FFD600;
+    color:#222;
+}
+
+.btn:hover{
+    transform:scale(1.08);
+}
+
+.btn-secundario{
+    background:white;
+    color:#2E7D32;
+}
+
+.btn-secundario:hover{
+    transform:scale(1.08);
+}
+
+.categorias{
+    padding:70px 20px;
+    text-align:center;
+}
+
+.grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:30px;
+    margin-top:40px;
+}
+
+.card{
+    text-decoration:none;
+    color:#222;
+    background:white;
+    border-radius:20px;
+    padding:30px;
+    box-shadow:0 10px 25px rgba(0,0,0,.15);
+    transition:.4s;
+}
+
+.card:hover{
+    transform:translateY(-10px) scale(1.05);
+    background:#FFFDE7;
+}
+
+.card h3{
+    color:#2E7D32;
+    font-size:1.6rem;
+}
+
+.beneficios{
+    background:#F1F8E9;
+    padding:70px 20px;
+    text-align:center;
+}
+
+.beneficios-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:30px;
+    margin-top:40px;
+}
+
+.beneficios-grid div{
+    background:white;
+    border-radius:20px;
+    padding:30px;
+    transition:.3s;
+    box-shadow:0 8px 20px rgba(0,0,0,.1);
+}
+
+.beneficios-grid div:hover{
+    transform:translateY(-8px);
+}
+
+</style>

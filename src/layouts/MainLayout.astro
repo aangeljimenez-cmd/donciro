@@ -1,0 +1,22 @@
+---
+import "../styles/style.css";
+
+const { title } = Astro.props;
+---
+
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.8">
+  <title>{title} | Don Ciro</title>
+</head>
+
+<body>
+
+  <slot />
+
+</body>
+
+</html>

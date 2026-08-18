@@ -1,0 +1,343 @@
+/* ======== VARIABLES & RESET ======== */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --primary: #007dfa;
+  --primary-dark: #000acb;
+  --accent: #ffff00;
+  --accent-hover: #f6ea03;
+  --accent-light: #ffe600;
+  --bg-main: #F1F8E9;
+  --bg-surface: #FFFFFF;
+  --text-dark: #229c38;
+  --text-muted: #4E5D4E;
+}
+
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Poppins", sans-serif;
+}
+
+body {
+  background-color: var(--bg-main);
+  color: var(--text-dark);
+  line-height: 1.6;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* ======== REEMPLAZO DE CONTAINER DE BOOTSTRAP ======== */
+.container {
+  width: 100%;
+  max-width: 1140px;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: 1.5rem;
+  padding-right: 1.5rem;
+}
+
+/* ======== NAVBAR (FLEXBOX NATIVO) ======== */
+.navbar {
+  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
+  box-shadow: var(--shadow-md);
+  padding: 1rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+}
+
+.navbar .container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar-brand {
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--accent-light);
+  text-decoration: none;
+}
+
+.nav-links {
+  display: flex;
+  list-style: none;
+  gap: 1.5rem;
+}
+
+.nav-link {
+  color: rgba(255, 255, 255, 0.9);
+  text-decoration: none;
+  font-size: 1.05rem;
+  font-weight: 500;
+  transition: color 0.25s ease;
+}
+
+.nav-link:hover {
+  color: var(--accent-light);
+}
+
+/* ======== HERO ======== */
+.hero {
+  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
+              url("https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=1500&q=80");
+
+  background-position: center;
+  min-height: 70vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: #ffffff;
+  padding: 2rem;
+}
+
+
+.btn-principal {
+  display: inline-block;
+  background-color: var(--accent);
+  color: #ffffff;
+  padding: 14px 38px;
+  border-radius: 50px;
+  text-decoration: none;
+  font-size: 1.1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.btn-principal:hover {
+  background-color: var(--accent-hover);
+  transform: translateY(-3px);
+}
+
+/* ======== GRILLA DE PRODUCTOS (CSS GRID NATIVO) ======== */
+
+/* ======== TÍTULOS DE SECCIÓN ======== */
+h2.titulo-seccion, h1.titulo-seccion {
+  text-align: center;
+  margin: 3rem 0 1.5rem;
+  color: var(--primary-dark);
+  font-size: 2.2rem;
+}
+
+h2.titulo-seccion::after, h1.titulo-seccion::after {
+  content: "";
+  width: 80px;
+  height: 4px;
+  background-color: var(--accent);
+  display: block;
+  margin: 10px auto 0;
+  border-radius: 10px;
+}
+
+/* ======== FORMULARIO DE CONTACTO ======== */
+
+/* ======== FOOTER ======== */
+footer {
+  background-color: var(--primary-dark);
+  color: #ffffff;
+  padding: 2.5rem 1rem;
+  margin-top: auto;
+  text-align: center;
+}
+
+footer p {
+  margin: 0.3rem 0;
+}
+
+.quesos h3{
+    color: #49ac28;
+}
+.quesos h1{
+    color: #eeff00;
+}
+
+/* ======== ESTILOS DE PRODUCTOS ======== */
+
+.card-productos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+  margin: 30px;
+  padding: 30px;
+  align-items: stretch;
+}
+
+.product-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  background-color: bisque;
+  border-radius: 24px;
+  overflow: hidden;
+  height: 100%;
+}
+
+.product-card__image {
+  width: 100%;
+  height: 220px;
+  object-fit: cover;
+  display: block;
+  flex-shrink: 0;
+}
+
+.product-card__content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 16px;
+}
+
+.product-card__title {
+  margin: 0;
+  color: var(--text-dark);
+}
+
+.product-card__description {
+  margin: 0;
+  color: var(--text-dark);
+}
+
+.product-card__price {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+/* Botón comprar, base para todas las cards */
+.btn-comprar {
+    margin-top: 0.75rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    transition: opacity 0.2s;
+}
+.btn-comprar:hover { opacity: 0.85; }
+.btn-comprar:disabled { opacity: 0.6; cursor: default; }
+
+/* Quesos: amarillo */
+.quesos-container .product-card {
+    background-color: #f7e2a0;
+    border: 1px solid #e6c866;
+}
+.quesos-container .product-card__title,
+.quesos-container .product-card__description,
+.quesos-container .product-card__price-label,
+.quesos-container .product-card__price-value {
+    color: #6b4412;
+}
+.quesos-container .btn-comprar {
+    background-color: #d9a441;
+    color: #fff;
+}
+
+/* Mermeladas: tonos berries */
+.mermeladas-container .product-card {
+    background-color: #f3d4de;
+    border: 1px solid #d97a95;
+}
+.mermeladas-container .product-card__title,
+.mermeladas-container .product-card__description,
+.mermeladas-container .product-card__price-label,
+.mermeladas-container .product-card__price-value {
+    color: #7a1a3f;
+}
+.mermeladas-container .btn-comprar {
+    background-color: #b3395d;
+    color: #fff;
+}
+
+/* Huevos: beige */
+.huevos-container .product-card {
+    background-color: #f0e6d2;
+    border: 1px solid #d8c8a4;
+}
+.huevos-container .product-card__title,
+.huevos-container .product-card__description,
+.huevos-container .product-card__price-label,
+.huevos-container .product-card__price-value {
+    color: #5c4a1e;
+}
+.huevos-container .btn-comprar {
+    background-color: #b8a06a;
+    color: #fff;
+}
+
+/* Encurtidos: aceite de oliva */
+.encurtidos-container .product-card {
+    background-color: #d8dba0;
+    border: 1px solid #a8ab5f;
+}
+.encurtidos-container .product-card__title,
+.encurtidos-container .product-card__description,
+.encurtidos-container .product-card__price-label,
+.encurtidos-container .product-card__price-value {
+    color: #3f4a1f;
+}
+.encurtidos-container .btn-comprar {
+    background-color: #7d8a3f;
+    color: #fff;
+}
+
+/* Frutos secos: varios colores tipo frutos secos, alternados */
+.frutos-secos-container .product-card:nth-child(5n+1) {
+    background-color: #d9b48f; border: 1px solid #b9895f; /* almendra */
+}
+.frutos-secos-container .product-card:nth-child(5n+2) {
+    background-color: #a9714a; border: 1px solid #855530; /* nuez */
+}
+.frutos-secos-container .product-card:nth-child(5n+3) {
+    background-color: #e3c9a0; border: 1px solid #c7a56e; /* maní */
+}
+.frutos-secos-container .product-card:nth-child(5n+4) {
+    background-color: #8c6142; border: 1px solid #6b4a30; /* avellana */
+}
+.frutos-secos-container .product-card:nth-child(5n+5) {
+    background-color: #ecd9b0; border: 1px solid #d4b87c; /* castaña de cajú */
+}
+.frutos-secos-container .product-card__title,
+.frutos-secos-container .product-card__description,
+.frutos-secos-container .product-card__price-label,
+.frutos-secos-container .product-card__price-value {
+    color: #2e1b0f;
+}
+.frutos-secos-container .btn-comprar {
+    background-color: #6b4a30;
+    color: #fff;
+}
+
+.cantidad-selector {
+    display: flex;
+    gap: 8px;
+    margin-top: 0.75rem;
+    align-items: center;
+}
+.select-gramos {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+}
+.input-gramos, .input-unidades {
+    flex: 1;
+    padding: 0.5rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+    width: 100%;
+}
+.cantidad-selector__sufijo {
+    font-size: 0.85rem;
+    opacity: 0.8;
+}
+.cantidad-selector .btn-comprar {
+    flex: 1;
+    margin-top: 0;
+}
