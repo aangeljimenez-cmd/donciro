@@ -14,24 +14,107 @@ import Footer from "../components/Footer.astro";
             <a href="/producto">Ver productos</a>
         </div>
 
-        <div id="carrito-items"></div>
+        <div id="carrito-items" class="grid-todos-productos"></div>
 
         <div id="carrito-resumen" class="carrito-resumen" style="display:none;">
             <p class="carrito-total">Total: <span id="total-carrito">$0</span></p>
             <button id="vaciar-carrito" class="btn-secundario">Vaciar carrito</button>
-            <button id="ir-a-pagar" class="btn-comprar">Proceder al pago</button>
+
+            <div class="datos-entrega">
+                <h2>Datos de entrega</h2>
+                <input type="text" id="cliente-nombre" placeholder="Nombre completo" />
+                <input type="tel" id="cliente-telefono" placeholder="Teléfono de contacto" />
+                <textarea id="cliente-direccion" placeholder="Dirección de entrega (calle, número, comuna, referencia)"></textarea>
+
+                <p class="datos-entrega__opcional-label">
+                    ¿Tienes cuenta? Ingresa tu RUT para acumular tus pedidos y aplicar tu descuento (opcional)
+                </p>
+                <input type="text" id="cliente-rut" placeholder="RUT (opcional)" />
+                <input type="email" id="cliente-email" placeholder="Email (opcional)" />
+
+                <p id="checkout-error" class="checkout-error" style="display:none;"></p>
+                <button id="procesar-compra" class="btn-comprar">Procesar compra</button>
+            </div>
+        </div>
+
+        <div id="ticket-container" class="ticket-container" style="display:none;">
+            <div class="ticket">
+                <h2>¡Pedido recibido!</h2>
+                <p class="ticket-id">Ticket N° <span id="ticket-numero"></span></p>
+
+                <div class="ticket-bloque">
+                    <strong>Cliente:</strong> <span id="ticket-cliente"></span><br />
+                    <strong>Teléfono:</strong> <span id="ticket-telefono"></span><br />
+                    <strong>Dirección de entrega:</strong> <span id="ticket-direccion"></span>
+                </div>
+
+                <div class="ticket-bloque" id="ticket-items"></div>
+
+                <div class="ticket-bloque ticket-totales">
+                    <p>Subtotal: <span id="ticket-subtotal"></span></p>
+                    <p id="ticket-descuento-fila" style="display:none;">
+                        Descuento (<span id="ticket-descuento-pct"></span>%): -<span id="ticket-descuento-monto"></span>
+                    </p>
+                    <p class="ticket-total">Total a pagar: <span id="ticket-total"></span></p>
+                </div>
+            </div>
+            <a href="/producto" class="btn-comprar" style="display:inline-block; text-align:center; text-decoration:none; margin-top:1rem;">
+                Seguir comprando
+            </a>
         </div>
     </div>
     <Footer />
 </MainLayout>
 
 <script>
-  import { getCart, updateQuantity, removeFromCart, clearCart } from "../lib/cart.js";
+  import { getCart, removeFromCart, clearCart, updateQuantity } from "../lib/cart.js";
 
   const contenedor = document.getElementById("carrito-items");
   const resumen = document.getElementById("carrito-resumen");
   const vacioMsg = document.getElementById("carrito-vacio");
   const totalSpan = document.getElementById("total-carrito");
+  const ticketContainer = document.getElementById("ticket-container");
+  const errorMsg = document.getElementById("checkout-error");
+
+  // misma lógica de agrupación por color que en productos.astro
+  function getGrupo(categoria) {
+    const cat = (categoria || "").toLowerCase();
+    if (cat.startsWith("queso")) return "quesos";
+    if (cat === "mermeladas") return "mermeladas";
+    if (cat === "huevos") return "huevos";
+    if (["encurtidos", "aceitunas"].includes(cat)) return "encurtidos";
+    if (["frutos secos", "semillas"].includes(cat)) return "frutos-secos";
+    return "default";
+  }
+
+  // Incremento según unidad_medida del producto
+  function getStep(producto) {
+    if (producto.unidad === "kg") return 0.05; // 50 gr
+    if (producto.unidad === "litro") return 0.05; // 50 ml
+    return 1; // unidad
+  }
+
+  // Cantidad mínima según reglas del negocio
+  function getMin(producto) {
+    if (producto.cantidad_minima != null) return Number(producto.cantidad_minima);
+    const cat = (producto.categoria || "").toLowerCase();
+    if (cat === "huevos") return 12;
+    if (producto.unidad === "kg" || producto.unidad === "litro") return 0.1;
+    return 1;
+  }
+
+  // Evita errores de coma flotante (0.1 + 0.05 = 0.15000000000000002)
+  function redondear(n) {
+    return Math.round(n * 1000) / 1000;
+  }
+
+  function formatearCantidad(producto, cantidad) {
+    if (producto.unidad === "kg") return `${(cantidad * 1000).toFixed(0)} gr`;
+    if (producto.unidad === "litro") return `${(cantidad * 1000).toFixed(0)} ml`;
+    return `${cantidad} un.`;
+  }
+
+  let productosCache = [];
 
   async function render() {
     const cart = getCart();
@@ -43,9 +126,11 @@ import Footer from "../components/Footer.astro";
       return;
     }
     vacioMsg.style.display = "none";
+    ticketContainer.style.display = "none";
 
     const res = await fetch("/api/productos");
     const productos = await res.json();
+    productosCache = productos;
 
     let total = 0;
     contenedor.innerHTML = "";
@@ -54,23 +139,31 @@ import Footer from "../components/Footer.astro";
       const producto = productos.find((p) => p.id === item.id);
       if (!producto) return;
 
-      const esKg = producto.unidad === "kg";
       const subtotal = producto.precio * item.cantidad;
       total += subtotal;
 
-      const cantidadTexto = esKg
-        ? `${(item.cantidad * 1000).toFixed(0)} gr`
-        : `${item.cantidad} un.`;
+      const cantidadTexto = formatearCantidad(producto, item.cantidad);
+      const step = getStep(producto);
+      const min = getMin(producto);
+      const grupo = getGrupo(producto.categoria);
 
-      const fila = document.createElement("div");
-      fila.className = "carrito-fila";
-      fila.innerHTML = `
-        <span class="carrito-fila__nombre">${producto.name}</span>
-        <span class="carrito-fila__cantidad">${cantidadTexto}</span>
-        <span class="carrito-fila__subtotal">$${subtotal.toLocaleString("es-CL")}</span>
-        <button class="btn-quitar" data-id="${item.id}">Quitar</button>
+      const tarjeta = document.createElement("div");
+      tarjeta.className = `producto producto--${grupo}`;
+      tarjeta.innerHTML = `
+        <img src="${producto.imagen || "/src/img/images.jfif"}" alt="${producto.name}" />
+        <div class="producto-info">
+          <h3>${producto.name}</h3>
+          <p class="cantidad-actual">${cantidadTexto}</p>
+          <p class="precio">$${subtotal.toLocaleString("es-CL")}</p>
+          <div class="cantidad-controles">
+            <button class="btn-cantidad btn-menos" data-id="${item.id}" data-step="${step}" data-min="${min}" ${item.cantidad <= min ? "disabled" : ""}>−</button>
+            <span class="cantidad-valor">${cantidadTexto}</span>
+            <button class="btn-cantidad btn-mas" data-id="${item.id}" data-step="${step}" data-min="${min}">+</button>
+          </div>
+          <button class="btn-quitar" data-id="${item.id}">Quitar</button>
+        </div>
       `;
-      contenedor.appendChild(fila);
+      contenedor.appendChild(tarjeta);
     });
 
     totalSpan.textContent = `$${total.toLocaleString("es-CL")}`;
@@ -78,8 +171,35 @@ import Footer from "../components/Footer.astro";
   }
 
   contenedor.addEventListener("click", (e) => {
-    if (e.target.classList.contains("btn-quitar")) {
-      removeFromCart(Number(e.target.dataset.id));
+    const target = e.target;
+
+    if (target.classList.contains("btn-quitar")) {
+      removeFromCart(Number(target.dataset.id));
+      render();
+      return;
+    }
+
+    if (target.classList.contains("btn-mas") || target.classList.contains("btn-menos")) {
+      const id = Number(target.dataset.id);
+      const step = Number(target.dataset.step);
+      const min = Number(target.dataset.min);
+
+      const cart = getCart();
+      const item = cart.find((i) => i.id === id);
+      if (!item) return;
+
+      let nuevaCantidad = target.classList.contains("btn-mas")
+        ? item.cantidad + step
+        : item.cantidad - step;
+
+      nuevaCantidad = redondear(nuevaCantidad);
+
+      if (nuevaCantidad < min) {
+        // no se puede bajar del mínimo con el botón "−"; para eliminar está "Quitar"
+        return;
+      }
+
+      updateQuantity(id, nuevaCantidad);
       render();
     }
   });
@@ -89,41 +209,304 @@ import Footer from "../components/Footer.astro";
     render();
   });
 
-  document.getElementById("ir-a-pagar").addEventListener("click", () => {
-    window.location.href = "/checkout";
+  document.getElementById("procesar-compra").addEventListener("click", async (e) => {
+    errorMsg.style.display = "none";
+
+    const nombre = document.getElementById("cliente-nombre").value.trim();
+    const telefono = document.getElementById("cliente-telefono").value.trim();
+    const direccion = document.getElementById("cliente-direccion").value.trim();
+    const rut = document.getElementById("cliente-rut").value.trim();
+    const email = document.getElementById("cliente-email").value.trim();
+
+    if (!nombre || !telefono || !direccion) {
+      errorMsg.textContent = "Completa nombre, teléfono y dirección de entrega.";
+      errorMsg.style.display = "block";
+      return;
+    }
+
+    const items = getCart();
+    if (items.length === 0) return;
+
+    const boton = e.target;
+    const textoOriginal = boton.textContent;
+    boton.disabled = true;
+    boton.textContent = "Procesando...";
+
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre,
+          telefono,
+          direccion,
+          rut: rut || undefined,
+          email: email || undefined,
+          items,
+        }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "No se pudo procesar la compra.");
+      }
+
+      mostrarTicket(data);
+      clearCart();
+      resumen.style.display = "none";
+      contenedor.innerHTML = "";
+    } catch (err) {
+      errorMsg.textContent = err.message;
+      errorMsg.style.display = "block";
+    } finally {
+      boton.disabled = false;
+      boton.textContent = textoOriginal;
+    }
   });
+
+  function mostrarTicket(pedido) {
+    document.getElementById("ticket-numero").textContent = pedido.id;
+    document.getElementById("ticket-cliente").textContent = pedido.nombre;
+    document.getElementById("ticket-telefono").textContent = pedido.telefono;
+    document.getElementById("ticket-direccion").textContent = pedido.direccion;
+
+    const itemsDiv = document.getElementById("ticket-items");
+    itemsDiv.innerHTML = pedido.items
+      .map((i) => {
+        let cantidadTexto;
+        if (i.unidad === "kg") cantidadTexto = `${(i.cantidad * 1000).toFixed(0)} gr`;
+        else if (i.unidad === "litro") cantidadTexto = `${(i.cantidad * 1000).toFixed(0)} ml`;
+        else cantidadTexto = `${i.cantidad} un.`;
+        return `<p>${i.producto_nombre} — ${cantidadTexto} — $${i.subtotal.toLocaleString("es-CL")}</p>`;
+      })
+      .join("");
+
+    document.getElementById("ticket-subtotal").textContent = `$${pedido.subtotal.toLocaleString("es-CL")}`;
+    document.getElementById("ticket-total").textContent = `$${pedido.total.toLocaleString("es-CL")}`;
+
+    const filaDescuento = document.getElementById("ticket-descuento-fila");
+    if (pedido.descuentoPct > 0) {
+      document.getElementById("ticket-descuento-pct").textContent = pedido.descuentoPct;
+      document.getElementById("ticket-descuento-monto").textContent =
+        pedido.descuentoMonto.toLocaleString("es-CL");
+      filaDescuento.style.display = "block";
+    } else {
+      filaDescuento.style.display = "none";
+    }
+
+    ticketContainer.style.display = "block";
+    ticketContainer.scrollIntoView({ behavior: "smooth" });
+  }
 
   render();
 </script>
 
 <style>
 .carrito-container {
-    max-width: 800px;
+    max-width: 1100px;
     margin: 0 auto;
     padding: 20px;
 }
-.carrito-fila {
+
+/* ---- Tarjetas de producto: mismas reglas que productos.astro.
+   Se crean dinámicamente vía JS (innerHTML), por eso van con :global() ---- */
+.carrito-container :global(.grid-todos-productos) {
     display: grid;
-    grid-template-columns: 2fr 1fr 1fr auto;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 0;
-    border-bottom: 1px solid #eee;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 30px;
+    padding: 20px 0 40px;
 }
-.btn-quitar {
+
+.carrito-container :global(.producto) {
+    background: white;
+    border-radius: 25px;
+    overflow: hidden;
+    box-shadow: 0 15px 35px rgba(0,0,0,.15);
+    transition: .4s;
+}
+
+.carrito-container :global(.producto:hover) {
+    transform: translateY(-15px) scale(1.05);
+    box-shadow: 0 25px 50px rgba(0,0,0,.30);
+}
+
+.carrito-container :global(.producto img) {
+    width: 100%;
+    height: 250px;
+    object-fit: cover;
+    transition: .5s;
+}
+
+.carrito-container :global(.producto:hover img) {
+    transform: scale(1.15);
+}
+
+.carrito-container :global(.producto-info) {
+    padding: 15px;
+}
+
+.carrito-container :global(.producto-info .precio) {
+    font-weight: bold;
+    font-size: 1.2rem;
+    margin-top: 5px;
+}
+
+.carrito-container :global(.cantidad-actual) {
+    display: none; /* se mantiene solo para lectura de datos; el valor visible va en .cantidad-valor */
+}
+
+.carrito-container :global(.cantidad-controles) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 10px 0;
+}
+
+.carrito-container :global(.btn-cantidad) {
+    background: #30af25;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+    transition: .3s;
+    padding: 0;
+}
+
+.carrito-container :global(.btn-cantidad:hover:not(:disabled)) {
+    opacity: .85;
+}
+
+.carrito-container :global(.btn-cantidad:disabled) {
+    background: #ccc;
+    cursor: not-allowed;
+}
+
+.carrito-container :global(.cantidad-valor) {
+    min-width: 70px;
+    text-align: center;
+    font-weight: 600;
+}
+
+.carrito-container :global(.producto button.btn-quitar) {
     background: #e74c3c;
     color: white;
     border: none;
-    border-radius: 6px;
-    padding: 6px 12px;
+    padding: 12px;
+    width: 100%;
+    font-size: 16px;
     cursor: pointer;
+    transition: .3s;
 }
+
+.carrito-container :global(.producto button.btn-quitar:hover) {
+    opacity: .85;
+}
+
+/* Quesos: amarillo */
+.carrito-container :global(.producto--quesos){ background:#f7e2a0; border:2px solid #e6c866; }
+.carrito-container :global(.producto--quesos h3),
+.carrito-container :global(.producto--quesos p),
+.carrito-container :global(.producto--quesos .precio){ color:#6b4412; }
+
+/* Mermeladas: berries */
+.carrito-container :global(.producto--mermeladas){ background:#f3d4de; border:2px solid #d97a95; }
+.carrito-container :global(.producto--mermeladas h3),
+.carrito-container :global(.producto--mermeladas p),
+.carrito-container :global(.producto--mermeladas .precio){ color:#7a1a3f; }
+
+/* Huevos: beige */
+.carrito-container :global(.producto--huevos){ background:#f0e6d2; border:2px solid #d8c8a4; }
+.carrito-container :global(.producto--huevos h3),
+.carrito-container :global(.producto--huevos p),
+.carrito-container :global(.producto--huevos .precio){ color:#5c4a1e; }
+
+/* Encurtidos: aceite de oliva */
+.carrito-container :global(.producto--encurtidos){ background:#d8dba0; border:2px solid #a8ab5f; }
+.carrito-container :global(.producto--encurtidos h3),
+.carrito-container :global(.producto--encurtidos p),
+.carrito-container :global(.producto--encurtidos .precio){ color:#3f4a1f; }
+
+/* Frutos secos y semillas: café */
+.carrito-container :global(.producto--frutos-secos){ background:#d9b48f; border:2px solid #b9895f; }
+.carrito-container :global(.producto--frutos-secos h3),
+.carrito-container :global(.producto--frutos-secos p),
+.carrito-container :global(.producto--frutos-secos .precio){ color:#2e1b0f; }
+
+/* ---- Resto de la página ---- */
 .carrito-resumen {
     margin-top: 20px;
     text-align: right;
 }
 .carrito-total {
     font-size: 1.4rem;
+    font-weight: bold;
+}
+.datos-entrega {
+    text-align: left;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #eee;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.datos-entrega h2 {
+    font-size: 1.1rem;
+    margin-bottom: 4px;
+}
+.datos-entrega input,
+.datos-entrega textarea {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-size: 1rem;
+}
+.datos-entrega textarea {
+    min-height: 70px;
+    resize: vertical;
+}
+.datos-entrega__opcional-label {
+    font-size: 0.85rem;
+    color: #666;
+    margin-top: 8px;
+}
+.checkout-error {
+    color: #c0392b;
+    font-weight: 600;
+}
+.ticket-container {
+    max-width: 500px;
+    margin: 30px auto 0;
+}
+.ticket {
+    background: #fff;
+    border: 1px dashed #999;
+    border-radius: 12px;
+    padding: 24px;
+    text-align: left;
+}
+.ticket-id {
+    color: #555;
+    margin-bottom: 12px;
+}
+.ticket-bloque {
+    padding: 10px 0;
+    border-top: 1px solid #eee;
+}
+.ticket-bloque :global(p) {
+    margin: 4px 0;
+}
+.ticket-totales p {
+    margin: 4px 0;
+}
+.ticket-total {
+    font-size: 1.2rem;
     font-weight: bold;
 }
 </style>

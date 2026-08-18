@@ -6,13 +6,24 @@ import Card from "../components/Card.astro";
 import { pool } from "../lib/db.js";
 
 const [productos] = await pool.query(
-  `SELECT p.id, p.name, p.precio, p.imagen, u.name AS unidad, c.name AS categoria
+  `SELECT p.id, p.name, p.precio, p.imagen, p.cantidad_minima,
+          u.name AS unidad, c.name AS categoria
    FROM productos p
    JOIN categoria c ON p.id_cat = c.id
    JOIN unidad_medida u ON p.id_umedida = u.id
    WHERE p.disponible = 1 AND p.stock > 0
    ORDER BY p.name`
 );
+
+function getGrupo(categoria) {
+  const cat = (categoria || "").toLowerCase();
+  if (cat.startsWith("queso")) return "quesos";
+  if (cat === "mermeladas") return "mermeladas";
+  if (cat === "huevos") return "huevos";
+  if (["encurtidos", "aceitunas"].includes(cat)) return "encurtidos";
+  if (["frutos secos", "semillas"].includes(cat)) return "frutos-secos";
+  return "default";
+}
 ---
 
 <MainLayout title="Productos">
@@ -28,27 +39,44 @@ const [productos] = await pool.query(
 
 <div class="grid-todos-productos" id="grid-productos">
   {productos.map((p) => (
-    <div class="producto" data-name={p.name.toLowerCase()}>
+    <div
+      class={`producto producto--${getGrupo(p.categoria)}`}
+      data-name={p.name.toLowerCase()}
+      data-categoria={p.categoria.toLowerCase()}
+    >
       <img src={p.imagen || "/src/img/images.jfif"} alt={p.name} />
       <div class="producto-info">
         <h3>{p.name}</h3>
         <p>{p.categoria} · {p.unidad}</p>
         <p class="precio">${Number(p.precio).toLocaleString('es-CL')}</p>
 
-        {p.unidad === 'kg' ? (
+        {(p.unidad === 'kg' || p.unidad === 'litro') ? (
           <div class="cantidad-selector">
-            <select class="select-gramos" data-id={p.id}>
-              <option value="250">250 gr</option>
-              <option value="500">500 gr</option>
-              <option value="750">750 gr</option>
-              <option value="1000" selected>1 kg</option>
-              <option value="1500">1,5 kg</option>
-              <option value="2000">2 kg</option>
-            </select>
-            <button class="btn-comprar" data-id={p.id} data-unidad="kg">Agregar</button>
+            <input
+              type="number"
+              class="input-gramos"
+              data-id={p.id}
+              data-min={Number(p.cantidad_minima) * 1000}
+              min={Number(p.cantidad_minima) * 1000}
+              step="50"
+              value={Number(p.cantidad_minima) * 1000}
+            />
+            <span class="cantidad-selector__sufijo">{p.unidad === 'kg' ? 'gr' : 'ml'}</span>
+            <button class="btn-comprar" data-id={p.id} data-unidad={p.unidad}>Agregar</button>
           </div>
         ) : (
-          <button class="btn-comprar" data-id={p.id} data-unidad={p.unidad}>Comprar</button>
+          <div class="cantidad-selector">
+            <input
+              type="number"
+              class="input-unidades"
+              data-id={p.id}
+              data-min={Number(p.cantidad_minima)}
+              min={Number(p.cantidad_minima)}
+              step="1"
+              value={Number(p.cantidad_minima)}
+            />
+            <button class="btn-comprar" data-id={p.id} data-unidad={p.unidad}>Comprar</button>
+          </div>
         )}
       </div>
     </div>
@@ -76,7 +104,8 @@ const [productos] = await pool.query(
     let visibles = 0;
 
     items.forEach((item) => {
-      const coincide = item.dataset.name.includes(query);
+      const coincide =
+        item.dataset.name.includes(query) || item.dataset.categoria.includes(query);
       item.style.display = coincide ? "" : "none";
       if (coincide) visibles++;
     });
@@ -87,13 +116,21 @@ const [productos] = await pool.query(
   document.addEventListener("click", (e) => {
     if (e.target.classList.contains("btn-comprar")) {
       const id = Number(e.target.dataset.id);
-      const esKg = e.target.dataset.unidad === "kg";
+      const esPeso = e.target.dataset.unidad === "kg" || e.target.dataset.unidad === "litro";
       let cantidad = 1;
 
-      if (esKg) {
-        const select = document.querySelector(`.select-gramos[data-id="${id}"]`);
-        const gramos = Number(select.value);
-        cantidad = gramos / 1000;
+      if (esPeso) {
+        const input = document.querySelector(`.input-gramos[data-id="${id}"]`);
+        const min = Number(input.dataset.min);
+        const valor = Math.max(min, Number(input.value) || min);
+        input.value = valor;
+        cantidad = valor / 1000;
+      } else {
+        const input = document.querySelector(`.input-unidades[data-id="${id}"]`);
+        const min = Number(input.dataset.min);
+        const unidades = Math.max(min, Math.floor(Number(input.value)) || min);
+        input.value = unidades;
+        cantidad = unidades;
       }
 
       addToCart(id, cantidad);
@@ -176,6 +213,20 @@ border-radius:6px;
 border:1px solid #ccc;
 }
 
+.input-gramos, .input-unidades{
+flex:1;
+padding:8px;
+border-radius:6px;
+border:1px solid #ccc;
+font-size:16px;
+width:100%;
+}
+
+.cantidad-selector__sufijo{
+font-size:14px;
+color:var(--text-secondary, #555);
+}
+
 .producto button{
 background:#30af25;
 color:white;
@@ -188,14 +239,35 @@ transition:.3s;
 }
 
 .producto button:hover{
-background:#ffd600;
-color:black;
+opacity:.85;
 }
 
+/* Quesos: amarillo */
+.producto--quesos{ background:#f7e2a0; border:2px solid #e6c866; }
+.producto--quesos h3, .producto--quesos p, .producto--quesos .precio{ color:#6b4412; }
+.producto--quesos button{ background:#d9a441; }
+
+/* Mermeladas: berries */
+.producto--mermeladas{ background:#f3d4de; border:2px solid #d97a95; }
+.producto--mermeladas h3, .producto--mermeladas p, .producto--mermeladas .precio{ color:#7a1a3f; }
+.producto--mermeladas button{ background:#b3395d; }
+
+/* Huevos: beige */
+.producto--huevos{ background:#f0e6d2; border:2px solid #d8c8a4; }
+.producto--huevos h3, .producto--huevos p, .producto--huevos .precio{ color:#5c4a1e; }
+.producto--huevos button{ background:#b8a06a; }
+
+/* Encurtidos: aceite de oliva */
+.producto--encurtidos{ background:#d8dba0; border:2px solid #a8ab5f; }
+.producto--encurtidos h3, .producto--encurtidos p, .producto--encurtidos .precio{ color:#3f4a1f; }
+.producto--encurtidos button{ background:#7d8a3f; }
+
+/* Frutos secos y semillas: café */
+.producto--frutos-secos{ background:#d9b48f; border:2px solid #b9895f; }
+.producto--frutos-secos h3, .producto--frutos-secos p, .producto--frutos-secos .precio{ color:#2e1b0f; }
+.producto--frutos-secos button{ background:#6b4a30; }
+
 body{
-background:
-radial-gradient(circle at top left,#ffdd00 0%,transparent 45%),
-radial-gradient(circle at bottom right,#00f7ff 0%,transparent 55%),
-linear-gradient(135deg,#fffde7,#f1f8e9);
+background: #fdf6e8;
 }
 </style>

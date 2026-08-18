@@ -1,0 +1,176 @@
+---
+import Layout from '../layouts/MainLayout.astro';
+import Navbar from '../components/Navbar.astro';
+import Footer from '../components/Footer.astro';
+---
+<Layout title="Crear cuenta">
+  <Navbar />
+  <main class="auth-page">
+    <div class="auth-card">
+      <h1 class="titulo-seccion">Crear cuenta</h1>
+      <p class="auth-subtitulo">Regístrate para acumular tus pedidos y acceder a tus descuentos.</p>
+
+      <form id="form-registro" class="auth-form">
+        <div class="campo">
+          <label for="nombre">Nombre completo</label>
+          <input type="text" id="nombre" name="nombre" required />
+        </div>
+
+        <div class="campo">
+          <label for="rut">RUT</label>
+          <input type="text" id="rut" name="rut" placeholder="12.345.678-9" required />
+        </div>
+
+        <div class="campo">
+          <label for="telefono">Teléfono</label>
+          <input type="tel" id="telefono" name="telefono" required />
+        </div>
+
+        <div class="campo">
+          <label for="password">Contraseña</label>
+          <input type="password" id="password" name="password" minlength="6" required />
+        </div>
+
+        <button type="submit" class="btn-principal auth-btn">Registrarme</button>
+      </form>
+
+      <p id="mensaje" class="auth-mensaje"></p>
+
+      <p class="auth-switch">
+        ¿Ya tienes cuenta? <a href="/mis-pedidos">Ingresa aquí</a>
+      </p>
+    </div>
+  </main>
+  <Footer />
+</Layout>
+
+<script>
+  document.getElementById('form-registro').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const mensaje = document.getElementById('mensaje');
+    mensaje.textContent = '';
+    mensaje.className = 'auth-mensaje';
+
+    const body = {
+      nombre: form.nombre.value,
+      rut: form.rut.value,
+      telefono: form.telefono.value,
+      password: form.password.value,
+    };
+
+    const boton = form.querySelector('button');
+    const textoOriginal = boton.textContent;
+    boton.disabled = true;
+    boton.textContent = 'Creando cuenta...';
+
+    try {
+      const res = await fetch('/api/clientes/registro', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error al registrar');
+
+      mensaje.textContent = '¡Cuenta creada! Ya puedes ingresar y ver tus pedidos.';
+      mensaje.classList.add('ok');
+      form.reset();
+    } catch (err) {
+      mensaje.textContent = err.message;
+      mensaje.classList.add('error');
+    } finally {
+      boton.disabled = false;
+      boton.textContent = textoOriginal;
+    }
+  });
+</script>
+
+<style>
+  .auth-page {
+    display: flex;
+    justify-content: center;
+    padding: 3rem 1rem;
+    min-height: 60vh;
+  }
+  .auth-card {
+    background: var(--bg-surface, #fff);
+    width: 100%;
+    max-width: 420px;
+    border-radius: 20px;
+    padding: 2.5rem 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+  }
+  .auth-card .titulo-seccion {
+    margin: 0 0 0.4rem;
+    text-align: left;
+  }
+  .auth-card .titulo-seccion::after {
+    margin: 10px 0 0;
+  }
+  .auth-subtitulo {
+    color: var(--text-muted, #666);
+    font-size: 0.95rem;
+    margin-bottom: 1.75rem;
+  }
+  .auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+  .campo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+  .campo label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-muted, #555);
+  }
+  .campo input {
+    padding: 0.7rem 0.9rem;
+    border-radius: 10px;
+    border: 1px solid #ddd;
+    font-size: 1rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .campo input:focus {
+    outline: none;
+    border-color: var(--primary, #007dfa);
+    box-shadow: 0 0 0 3px rgba(0, 125, 250, 0.15);
+  }
+  .auth-btn {
+    margin-top: 0.5rem;
+    width: 100%;
+    text-align: center;
+    border: none;
+    cursor: pointer;
+    background-color: var(--primary, #007dfa);
+  }
+  .auth-btn:hover {
+    background-color: var(--primary-dark, #000acb);
+  }
+  .auth-mensaje {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    text-align: center;
+    min-height: 1.2em;
+  }
+  .auth-mensaje.ok { color: #16a34a; font-weight: 600; }
+  .auth-mensaje.error { color: #c0392b; font-weight: 600; }
+  .auth-switch {
+    text-align: center;
+    margin-top: 1.5rem;
+    font-size: 0.9rem;
+    color: var(--text-muted, #666);
+  }
+  .auth-switch a {
+    color: var(--primary, #007dfa);
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .auth-switch a:hover {
+    text-decoration: underline;
+  }
+</style>

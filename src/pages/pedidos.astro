@@ -1,0 +1,179 @@
+---
+import Layout from '../layouts/MainLayout.astro';
+import { listarPedidos, obtenerItemsPedido } from '../lib/pedidos.js';
+
+const authHeader = Astro.request.headers.get('authorization');
+const usuarioValido = import.meta.env.PROVEEDOR_USER;
+const claveValida = import.meta.env.PROVEEDOR_PASS;
+
+function estaAutorizado(header) {
+  if (!header || !header.startsWith('Basic ')) return false;
+  const decoded = Buffer.from(header.slice(6), 'base64').toString('utf-8');
+  const [usuario, clave] = decoded.split(':');
+  return usuario === usuarioValido && clave === claveValida;
+}
+
+const autorizado = estaAutorizado(authHeader);
+
+if (!autorizado) {
+  Astro.response.status = 401;
+  Astro.response.headers.set('WWW-Authenticate', 'Basic realm="Panel proveedor"');
+}
+
+let pedidos = [];
+if (autorizado) {
+  const base = await listarPedidos();
+  pedidos = await Promise.all(
+    base.map(async (p) => ({ ...p, items: await obtenerItemsPedido(p.id) }))
+  );
+}
+
+const pedidosPendientes = pedidos.filter((p) => p.estado !== 'entregado');
+
+function formatearMonto(monto) {
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(monto);
+}
+---
+
+<Layout title="Pedidos - Panel proveedor">
+  {!autorizado ? (
+    <p style="text-align:center; margin:60px;">Acceso restringido.</p>
+  ) : (
+    <div class="panel-container">
+      <h1 class="titulo-seccion">Pedidos</h1>
+
+      {pedidosPendientes.length > 0 && (
+        <div class="ruta-entrega">
+          <h2>Ruta de entrega (no entregados)</h2>
+          <ol>
+            {pedidosPendientes.map((p) => (
+              <li>
+                <strong>#{p.id}</strong> — {p.nombre} — {p.direccion}
+                (<a href={`tel:${p.telefono}`}>{p.telefono}</a>)
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      <div class="pedidos-lista">
+        {pedidos.map((p) => (
+          <div class="pedido-card" data-estado={p.estado}>
+            <div class="pedido-card__header">
+              <span class="pedido-card__id">Ticket #{p.id}</span>
+              <span class={`pedido-card__estado pedido-card__estado--${p.estado}`}>{p.estado}</span>
+            </div>
+
+            <p><strong>Cliente:</strong> {p.nombre} ({p.telefono}) {p.rut && <>— RUT {p.rut}</>}</p>
+            <p><strong>Entrega:</strong> {p.direccion}</p>
+            <p><strong>Fecha:</strong> {new Date(p.created_at).toLocaleString('es-CL')}</p>
+
+            <div class="pedido-card__items">
+              {p.items.map((i) => {
+                const esPeso = i.unidad === 'kg' || i.unidad === 'litro';
+                return (
+                  <div class="item-pesaje" data-item-id={i.id}>
+                    <span>{i.producto_nombre}</span>
+                    <span>
+                      Pedido: {esPeso ? `${(Number(i.cantidad) * 1000).toFixed(0)} g/ml` : `${i.cantidad} un.`}
+                    </span>
+                    {esPeso ? (
+                      <span class="pesaje-input">
+                        Real:
+                        <input
+                          type="number"
+                          class="input-cantidad-real"
+                          data-item-id={i.id}
+                          step="1"
+                          min="0"
+                          value={i.cantidad_real !== null ? Number(i.cantidad_real) * 1000 : (Number(i.cantidad) * 1000).toFixed(0)}
+                        /> g/ml
+                      </span>
+                    ) : (
+                      <span>${Number(i.subtotal).toLocaleString('es-CL')}</span>
+                    )}
+                  </div>
+                );
+              })}
+              {p.items.some((i) => i.unidad === 'kg' || i.unidad === 'litro') && (
+                <button class="btn-guardar-pesaje" data-pedido-id={p.id}>Guardar pesaje real</button>
+              )}
+            </div>
+
+            <p>Subtotal: {formatearMonto(p.subtotal)}</p>
+            {Number(p.descuento_pct) > 0 && (
+              <p>Descuento ({p.descuento_pct}%): -{formatearMonto(p.descuento_monto)}</p>
+            )}
+            <p class="pedido-card__total">Total: {formatearMonto(p.total)}</p>
+
+            <div class="pedido-card__acciones">
+              <button class="btn-estado" data-id={p.id} data-estado="en_preparacion">En preparación</button>
+              <button class="btn-estado" data-id={p.id} data-estado="en_ruta">En ruta</button>
+              <button class="btn-estado" data-id={p.id} data-estado="entregado">Entregado</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )}
+</Layout>
+
+<script>
+  document.addEventListener('click', async (e) => {
+    if (e.target.classList.contains('btn-estado')) {
+      const id = Number(e.target.dataset.id);
+      const estado = e.target.dataset.estado;
+      await fetch('/api/pedidos/estado', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, estado }),
+      });
+      location.reload();
+    }
+
+    if (e.target.classList.contains('btn-guardar-pesaje')) {
+      const pedidoCard = e.target.closest('.pedido-card');
+      const inputs = pedidoCard.querySelectorAll('.input-cantidad-real');
+      const items = Array.from(inputs).map((input) => ({
+        pedido_item_id: Number(input.dataset.itemId),
+        cantidad_real: Number(input.value) / 1000,
+      }));
+
+      const res = await fetch('/api/pedidos/pesaje', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'No se pudo guardar el pesaje');
+        return;
+      }
+      location.reload();
+    }
+  });
+</script>
+
+<style>
+.panel-container { max-width: 900px; margin: 0 auto; padding: 20px; }
+.ruta-entrega { background: #fff9d6; border: 1px solid #e6d47a; border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; }
+.ruta-entrega ol { margin: 10px 0 0 20px; }
+.pedidos-lista { display: flex; flex-direction: column; gap: 16px; }
+.pedido-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 16px 20px; }
+.pedido-card__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.pedido-card__id { font-weight: bold; }
+.pedido-card__estado { padding: 2px 10px; border-radius: 20px; font-size: 0.85rem; text-transform: capitalize; background: #eee; }
+.pedido-card__estado--pendiente { background: #ffe0b2; }
+.pedido-card__estado--en_preparacion { background: #fff9c4; }
+.pedido-card__estado--en_ruta { background: #bbdefb; }
+.pedido-card__estado--entregado { background: #c8e6c9; }
+.pedido-card__items { margin: 10px 0; padding: 10px 0; border-top: 1px dashed #ddd; border-bottom: 1px dashed #ddd; }
+.item-pesaje { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; flex-wrap: wrap; }
+.pesaje-input { display: flex; align-items: center; gap: 6px; }
+.input-cantidad-real { width: 80px; padding: 4px; border-radius: 4px; border: 1px solid #ccc; }
+.btn-guardar-pesaje { margin-top: 8px; padding: 6px 12px; border-radius: 6px; border: 1px solid #999; background: #f5f5f5; cursor: pointer; }
+.pedido-card__total { font-weight: bold; font-size: 1.05rem; }
+.pedido-card__acciones { display: flex; gap: 8px; margin-top: 10px; }
+.btn-estado { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 6px; background: #f5f5f5; cursor: pointer; }
+.btn-estado:hover { background: #e8e8e8; }
+</style>

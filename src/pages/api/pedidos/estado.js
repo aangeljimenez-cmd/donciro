@@ -1,13 +1,13 @@
-// src/pages/api/checkout.js
-import { crearPedido } from '../../lib/pedidos.js';
+// src/pages/api/pedidos/estado.js
+import { actualizarEstadoPedido } from '../../../lib/pedidos.js';
 
 export const prerender = false;
 
 export async function POST({ request }) {
   try {
-    const body = await request.json();
-    const pedido = await crearPedido(body);
-    return new Response(JSON.stringify(pedido), {
+    const { id, estado } = await request.json();
+    await actualizarEstadoPedido(id, estado);
+    return new Response(JSON.stringify({ ok: true }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
