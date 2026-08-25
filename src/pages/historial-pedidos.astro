@@ -1,0 +1,423 @@
+---
+import Layout from '../layouts/MainLayout.astro';
+import PanelNavbar from '../components/PanelNavbar.astro';
+import Footer from '../components/Footer.astro';
+import { listarPedidos } from '../lib/pedidos.js';
+import { estaAutorizado } from '../lib/auth.js';
+
+const autorizado = estaAutorizado(Astro.request);
+
+if (!autorizado) {
+  Astro.response.status = 401;
+  Astro.response.headers.set('WWW-Authenticate', 'Basic realm="Panel proveedor"');
+}
+
+let pedidos = [];
+if (autorizado) {
+  pedidos = await listarPedidos();
+}
+---
+
+<Layout title="Historial de pedidos - Panel proveedor">
+  {!autorizado ? (
+    <p style="text-align:center; margin:60px;">Acceso restringido.</p>
+  ) : (
+    <>
+      <PanelNavbar />
+      <main class="historial-page">
+        <h1 class="titulo-seccion">Historial de pedidos</h1>
+        <p class="historial-subtitulo">Todos los pedidos registrados, desde el primero.</p>
+
+        <div class="filtros-bar">
+          <input
+            type="text"
+            id="buscador"
+            class="historial-buscador"
+            placeholder="Buscar por nombre, RUT, teléfono o N° de pedido"
+          />
+          <select id="filtro-estado" class="filtro-select">
+            <option value="">Todos los estados</option>
+            <option value="pendiente">Pendiente</option>
+            <option value="en_preparacion">En preparación</option>
+            <option value="en_ruta">En ruta</option>
+            <option value="entregado">Entregado</option>
+          </select>
+          <label class="filtro-fecha">
+            Desde
+            <input type="date" id="filtro-desde" />
+          </label>
+          <label class="filtro-fecha">
+            Hasta
+            <input type="date" id="filtro-hasta" />
+          </label>
+          <button type="button" id="btn-limpiar-filtros" class="btn-limpiar-filtros">Limpiar</button>
+        </div>
+
+        <p id="contador-resultados" class="historial-contador"></p>
+
+        <div class="historial-tabla-wrap">
+          <table class="historial-tabla">
+            <thead>
+              <tr>
+                <th>N° Pedido</th>
+                <th>Cliente</th>
+                <th>RUT</th>
+                <th>Teléfono</th>
+                <th>Fecha</th>
+                <th>Total</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody id="tabla-body"></tbody>
+          </table>
+          <p id="sin-resultados" class="historial-sin-resultados" style="display:none;">
+            No se encontraron pedidos con ese criterio.
+          </p>
+        </div>
+      </main>
+
+      <div id="detalle-overlay" class="detalle-overlay" style="display:none;">
+        <div class="detalle-modal">
+          <button id="cerrar-detalle" class="detalle-cerrar" title="Cerrar">✕</button>
+          <div id="detalle-contenido">Cargando...</div>
+        </div>
+      </div>
+
+      <Footer />
+    </>
+  )}
+</Layout>
+
+{autorizado && (
+  <script define:vars={{ pedidos }}>
+    window.__PEDIDOS__ = pedidos;
+  </script>
+)}
+
+<script>
+  const ESTADOS_LABEL = {
+    pendiente: 'Pendiente',
+    en_preparacion: 'En preparación',
+    en_ruta: 'En ruta',
+    entregado: 'Entregado',
+  };
+
+  const pedidos = window.__PEDIDOS__ || [];
+  const tablaBody = document.getElementById('tabla-body');
+  const buscador = document.getElementById('buscador');
+  const filtroEstado = document.getElementById('filtro-estado');
+  const filtroDesde = document.getElementById('filtro-desde');
+  const filtroHasta = document.getElementById('filtro-hasta');
+  const contador = document.getElementById('contador-resultados');
+  const sinResultados = document.getElementById('sin-resultados');
+  const overlay = document.getElementById('detalle-overlay');
+  const detalleContenido = document.getElementById('detalle-contenido');
+
+  function formatearFecha(fecha) {
+    return new Date(fecha).toLocaleString('es-CL', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  }
+  function formatearMonto(monto) {
+    return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(monto);
+  }
+
+  function coincideTexto(pedido, textoBusqueda) {
+    const q = textoBusqueda.trim().toLowerCase();
+    if (!q) return true;
+    const qLimpio = q.replace(/[.\-\s]/g, '');
+    return (
+      String(pedido.id).includes(q) ||
+      (pedido.nombre || '').toLowerCase().includes(q) ||
+      (pedido.rut || '').toLowerCase().replace(/[.\-\s]/g, '').includes(qLimpio) ||
+      (pedido.telefono || '').toLowerCase().replace(/[\s\-]/g, '').includes(qLimpio)
+    );
+  }
+
+  function pasaFiltros(pedido) {
+    if (!coincideTexto(pedido, buscador.value)) return false;
+
+    if (filtroEstado.value && pedido.estado !== filtroEstado.value) return false;
+
+    const fechaPedido = new Date(pedido.created_at);
+    if (filtroDesde.value && fechaPedido < new Date(`${filtroDesde.value}T00:00:00`)) return false;
+    if (filtroHasta.value && fechaPedido > new Date(`${filtroHasta.value}T23:59:59`)) return false;
+
+    return true;
+  }
+
+  function renderTabla() {
+    const filtrados = pedidos.filter(pasaFiltros);
+
+    contador.textContent = `${filtrados.length} pedido${filtrados.length === 1 ? '' : 's'}`;
+
+    if (filtrados.length === 0) {
+      tablaBody.innerHTML = '';
+      sinResultados.style.display = 'block';
+      return;
+    }
+    sinResultados.style.display = 'none';
+
+    tablaBody.innerHTML = filtrados
+      .map((p) => `
+        <tr class="fila-pedido" data-id="${p.id}">
+          <td>#${p.id}</td>
+          <td>${p.nombre}</td>
+          <td>${p.rut ?? '—'}</td>
+          <td>${p.telefono ?? '—'}</td>
+          <td>${formatearFecha(p.created_at)}</td>
+          <td>${formatearMonto(p.total)}</td>
+          <td><span class="estado-badge estado-badge--${p.estado}">${ESTADOS_LABEL[p.estado] ?? p.estado}</span></td>
+        </tr>
+      `)
+      .join('');
+  }
+
+  buscador.addEventListener('input', renderTabla);
+  filtroEstado.addEventListener('change', renderTabla);
+  filtroDesde.addEventListener('change', renderTabla);
+  filtroHasta.addEventListener('change', renderTabla);
+
+  document.getElementById('btn-limpiar-filtros').addEventListener('click', () => {
+    buscador.value = '';
+    filtroEstado.value = '';
+    filtroDesde.value = '';
+    filtroHasta.value = '';
+    renderTabla();
+  });
+
+  async function abrirDetalle(pedidoId) {
+    const pedido = pedidos.find((p) => p.id === pedidoId);
+    if (!pedido) return;
+
+    overlay.style.display = 'flex';
+    detalleContenido.innerHTML = 'Cargando...';
+
+    let items = [];
+    try {
+      const res = await fetch(`/api/pedidos/${pedidoId}/items`);
+      const data = await res.json();
+      items = data.items || [];
+    } catch {
+      // si falla, igual mostramos el resto de la info
+    }
+
+    const filasItems = items
+      .map((i) => {
+        let cantidadTexto;
+        if (i.unidad === 'kg') cantidadTexto = `${(i.cantidad * 1000).toFixed(0)} gr`;
+        else if (i.unidad === 'litro') cantidadTexto = `${(i.cantidad * 1000).toFixed(0)} ml`;
+        else cantidadTexto = `${i.cantidad} un.`;
+        return `<p>${i.producto_nombre} — ${cantidadTexto} — ${formatearMonto(i.subtotal)}</p>`;
+      })
+      .join('');
+
+    detalleContenido.innerHTML = `
+      <h2>Pedido #${pedido.id}</h2>
+      <span class="estado-badge estado-badge--${pedido.estado}">${ESTADOS_LABEL[pedido.estado] ?? pedido.estado}</span>
+
+      <div class="detalle-bloque">
+        <strong>Cliente:</strong> ${pedido.nombre}<br />
+        <strong>RUT:</strong> ${pedido.rut ?? '—'}<br />
+        <strong>Teléfono:</strong> ${pedido.telefono ?? '—'}<br />
+        <strong>Dirección:</strong> ${pedido.direccion ?? '—'}<br />
+        <strong>Fecha:</strong> ${formatearFecha(pedido.created_at)}
+      </div>
+
+      <div class="detalle-bloque">
+        <strong>Productos:</strong>
+        ${filasItems || '<p>Sin items registrados.</p>'}
+      </div>
+
+      <div class="detalle-bloque detalle-totales">
+        <p>Subtotal: ${formatearMonto(pedido.subtotal)}</p>
+        ${pedido.descuento_pct > 0 ? `<p>Descuento (${pedido.descuento_pct}%): -${formatearMonto(pedido.descuento_monto)}</p>` : ''}
+        <p class="detalle-total"><strong>Total: ${formatearMonto(pedido.total)}</strong></p>
+      </div>
+    `;
+  }
+
+  tablaBody.addEventListener('click', (e) => {
+    const fila = e.target.closest('.fila-pedido');
+    if (!fila) return;
+    abrirDetalle(Number(fila.dataset.id));
+  });
+
+  document.getElementById('cerrar-detalle').addEventListener('click', () => {
+    overlay.style.display = 'none';
+  });
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) overlay.style.display = 'none';
+  });
+
+  renderTabla();
+</script>
+
+<style is:global>
+.historial-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.historial-subtitulo {
+  color: var(--text-muted, #666);
+  margin-bottom: 1.25rem;
+}
+.filtros-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.historial-buscador {
+  flex: 2;
+  min-width: 220px;
+  padding: 12px 16px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 1rem;
+}
+.historial-buscador:focus,
+.filtro-select:focus,
+.filtro-fecha input:focus {
+  outline: none;
+  border-color: var(--primary, #007dfa);
+  box-shadow: 0 0 0 3px rgba(0, 125, 250, 0.15);
+}
+.filtro-select {
+  padding: 12px 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 0.95rem;
+  background: #fff;
+}
+.filtro-fecha {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #555;
+}
+.filtro-fecha input {
+  padding: 10px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  font-size: 0.9rem;
+}
+.btn-limpiar-filtros {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #666;
+}
+.btn-limpiar-filtros:hover {
+  background: #f4f7fb;
+}
+.historial-contador {
+  font-size: 0.85rem;
+  color: var(--text-muted, #888);
+  margin-bottom: 1rem;
+}
+.historial-tabla-wrap {
+  overflow-x: auto;
+  border-radius: 12px;
+  border: 1px solid #e3e8f0;
+}
+.historial-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+.historial-tabla thead {
+  background: #f4f7fb;
+}
+.historial-tabla th {
+  text-align: left;
+  padding: 12px 14px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: #666;
+  border-bottom: 1px solid #e3e8f0;
+}
+.historial-tabla td {
+  padding: 12px 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.fila-pedido {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.fila-pedido:hover {
+  background: #f4f7fb;
+}
+.historial-sin-resultados {
+  text-align: center;
+  padding: 30px;
+  color: var(--text-muted, #888);
+}
+.estado-badge {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  padding: 4px 12px;
+  border-radius: 20px;
+  color: #fff;
+}
+.estado-badge--pendiente { background: #f59e0b; }
+.estado-badge--en_preparacion { background: #d97706; }
+.estado-badge--en_ruta { background: #2563eb; }
+.estado-badge--entregado { background: #16a34a; }
+
+.detalle-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+.detalle-modal {
+  background: #fff;
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 520px;
+  width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
+  position: relative;
+}
+.detalle-cerrar {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: none;
+  border: none;
+  font-size: 1.2rem;
+  cursor: pointer;
+  color: #999;
+}
+.detalle-cerrar:hover {
+  color: #333;
+}
+.detalle-bloque {
+  padding: 12px 0;
+  border-top: 1px solid #eee;
+}
+.detalle-bloque :global(p) {
+  margin: 4px 0;
+}
+.detalle-totales p {
+  margin: 4px 0;
+}
+.detalle-total {
+  font-size: 1.1rem;
+}
+</style>

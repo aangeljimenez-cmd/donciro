@@ -16,33 +16,51 @@ import Footer from "../components/Footer.astro";
     </p>
 
     <div class="redes">
-      <a href="https://wa.me/+56950057760" target="_blank" class="card whatsapp">
+      <a
+        href="https://wa.me/56950057760?text=Hola%20Don%20Ciro%2C%20quisiera%20más%20información%20sobre%20sus%20productos"
+        target="_blank"
+        class="card whatsapp"
+      >
         <div class="icono">📱</div>
         <h2>WhatsApp</h2>
         <p>+56 9 5005 7760</p>
       </a>
 
-      <a href="https://www.instagram.com/donciro2026/" target="_blank" class="card instagram">
-        <div class="icono"><img src="https://static.wikia.nocookie.net/youtubepedia/images/1/1e/Instagram-.png/revision/latest?cb=20250619175353&path-prefix=es" style="width: 70px;border-radius:10px;" alt=""></div>
+      <a
+        href="https://www.instagram.com/donciro2026/"
+        target="_blank"
+        class="card instagram"
+      >
+        <div class="icono">
+          <img
+            src="https://static.wikia.nocookie.net/youtubepedia/images/1/1e/Instagram-.png/revision/latest?cb=20250619175353&path-prefix=es"
+            style="width: 70px;border-radius:10px;"
+            alt=""
+          />
+        </div>
         <h2>Instagram</h2>
         <p>@DonCiro</p>
       </a>
 
-      <a href="mailto:DonCiro.Contactanos@gmail.com" class="card gmail">
+      <a
+        href="https://mail.google.com/mail/?view=cm&fs=1&to=donciro.contactanos@gmail.com"
+        target="_blank"
+        class="card gmail"
+      >
         <div class="icono">✉️</div>
         <h2>Gmail</h2>
         <p>DonCiro@gmail.com</p>
       </a>
     </div>
   </section>
-
-  <h2 class="frase">
-    🧀 ¡Síguenos y descubre nuestras mejores ofertas, promociones y productos
-    frescos todos los días! 🥛
-  </h2>
-
-  <Footer />
 </MainLayout>
+
+<h2 class="frase">
+  🧀 ¡Síguenos y descubre nuestras mejores ofertas, promociones y productos
+  frescos todos los días! 🥛
+</h2>
+
+<Footer />
 
 <style>
   .contacto {
@@ -175,11 +193,11 @@ import Footer from "../components/Footer.astro";
     animation: latido 2s infinite;
   }
 
-    @keyframes latido {
-      50% {
-        transform: scale(1.05);
-      }
+  @keyframes latido {
+    50% {
+      transform: scale(1.05);
     }
+  }
 
   .contacto {
     background:

@@ -1,9 +1,10 @@
 // src/pages/api/clientes/registro.js
 import { registrarCliente } from '../../../lib/clientes.js';
+import { crearSesion, SESSION_COOKIE_NAME, opcionesCookieSesion } from '../../../lib/auth.js';
 
 export const prerender = false;
 
-export async function POST({ request }) {
+export async function POST({ request, cookies }) {
   try {
     const { nombre, rut, password, telefono } = await request.json();
 
@@ -20,7 +21,12 @@ export async function POST({ request }) {
       });
     }
 
-    const cliente = await registrarCliente({ nombre, rut, password, telefono });
+    const resultado = await registrarCliente({ nombre, rut, password, telefono });
+
+    const cliente = { id: resultado.id, rut, nombre };
+    const token = await crearSesion(cliente);
+    cookies.set(SESSION_COOKIE_NAME, token, opcionesCookieSesion());
+
     return new Response(JSON.stringify({ ok: true, cliente }), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },

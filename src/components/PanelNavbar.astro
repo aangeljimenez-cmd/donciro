@@ -1,0 +1,71 @@
+---
+const rutas = [
+  { href: '/panel', label: 'Inicio' },
+  { href: '/ingreso-compra', label: 'Ingreso de compra' },
+  { href: '/inventario', label: 'Toma de inventario' },
+  { href: '/pedidos', label: 'Pedidos' },
+  { href: '/historial-pedidos', label: 'Historial de pedidos' },
+];
+
+const rutaActual = Astro.url.pathname;
+---
+
+<nav class="panel-navbar">
+  <div class="panel-navbar__marca">Panel proveedor</div>
+  <ul class="panel-navbar__links">
+    {rutas.map((ruta) => (
+      <li>
+        <a
+          href={ruta.href}
+          class:list={['panel-navbar__link', { 'panel-navbar__link--activo': rutaActual === ruta.href }]}
+        >
+          {ruta.label}
+        </a>
+      </li>
+    ))}
+  </ul>
+</nav>
+
+<style>
+.panel-navbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 20px;
+  background: #1f2937;
+  color: #fff;
+}
+.panel-navbar__marca {
+  font-weight: 700;
+  font-size: 1rem;
+  white-space: nowrap;
+}
+.panel-navbar__links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.panel-navbar__link {
+  display: inline-block;
+  padding: 8px 12px;
+  border-radius: 6px;
+  color: #d1d5db;
+  text-decoration: none;
+  font-size: 0.9rem;
+  transition: background 0.15s, color 0.15s;
+}
+.panel-navbar__link:hover {
+  background: #374151;
+  color: #fff;
+}
+.panel-navbar__link--activo {
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
+}
+</style>

@@ -6,8 +6,7 @@ dist/
 # dependencies
 node_modules/
 
-#para subir actualizaciones es git add . despues git push
-
+JWT_SECRET=SECRETO_ELIMINADO
 
 # logs
 npm-debug.log*

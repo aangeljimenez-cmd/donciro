@@ -1,4 +1,5 @@
-import { buscarClientePorRut } from '../../../lib/pedidos.js';
+// src/pages/api/clientes/buscar.js
+import { buscarClienteParaRegistro } from '../../../lib/clientes.js';
 
 export const prerender = false;
 
@@ -12,9 +13,9 @@ export async function GET({ url }) {
     });
   }
 
-  const cliente = await buscarClientePorRut(rut);
+  const resultado = await buscarClienteParaRegistro(rut);
 
-  return new Response(JSON.stringify({ cliente }), {
+  return new Response(JSON.stringify(resultado), {
     status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
