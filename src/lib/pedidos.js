@@ -14,6 +14,9 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
   if (!nombre || !telefono || !direccion) {
     throw new Error('Faltan datos del cliente (nombre, teléfono o dirección).');
   }
+  if (!rut || !rut.trim()) {
+    throw new Error('El RUT es obligatorio.');
+  }
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('El carrito está vacío.');
   }
@@ -22,9 +25,9 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
   try {
     await conn.beginTransaction();
 
-    let cliente = rut ? await buscarClientePorRut(rut) : null;
+    let cliente = await buscarClientePorRut(rut);
 
-    if (rut && !cliente) {
+    if (!cliente) {
       const [result] = await conn.query(
         `INSERT INTO clientes (rut, nombre, email, telefono, descuento_individual, creado_en)
          VALUES (?, ?, ?, ?, 0, NOW())`,
@@ -89,7 +92,7 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
       `INSERT INTO pedidos
         (cliente_id, nombre, cliente_telefono, rut, direccion_entrega, subtotal, descuento_pct, descuento_monto, total, estado)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente')`,
-      [cliente?.id ?? null, nombre, telefono, rut ?? null, direccion, subtotal, descuentoPct, descuentoMonto, total]
+      [cliente.id, nombre, telefono, rut, direccion, subtotal, descuentoPct, descuentoMonto, total]
     );
     const pedidoId = result.insertId;
 

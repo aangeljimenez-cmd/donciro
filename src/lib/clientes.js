@@ -31,18 +31,25 @@ export async function registrarCliente({ nombre, rut, password, telefono }) {
   return { id: result.insertId };
 }
 
-/** Normaliza texto para comparar nombres de forma flexible: sin tildes, minúsculas, sin espacios extra. */
-function normalizarNombre(texto) {
-  return texto
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ');
+/**
+ * Busca un cliente por RUT para el flujo de /registro: indica si el RUT ya existe
+ * en la base (por ejemplo, creado automáticamente por un checkout anterior) y,
+ * si existe, si esa cuenta ya tiene contraseña (registro completo) o no.
+ */
+export async function buscarClienteParaRegistro(rut) {
+  const [rows] = await pool.query(
+    'SELECT id, nombre, password_hash FROM clientes WHERE rut = ?',
+    [rut]
+  );
+  if (rows.length === 0) {
+    return { existe: false, tieneCuenta: false };
+  }
+  const cliente = rows[0];
+  return { existe: true, tieneCuenta: !!cliente.password_hash, nombre: cliente.nombre };
 }
 
-/** Verifica rut + nombre + contraseña. Lanza error si no coincide. */
-export async function autenticarCliente({ nombre, rut, password }) {
+/** Verifica rut + contraseña. Lanza error si no coincide. */
+export async function autenticarCliente({ rut, password }) {
   const [rows] = await pool.query(
     'SELECT id, nombre, password_hash FROM clientes WHERE rut = ?',
     [rut]
@@ -54,11 +61,8 @@ export async function autenticarCliente({ nombre, rut, password }) {
     throw new Error('Esta cuenta aún no tiene contraseña. Completa tu registro primero.');
   }
 
-  const nombreCoincide = normalizarNombre(cliente.nombre) === normalizarNombre(nombre);
-  if (!nombreCoincide) throw new Error('Nombre o RUT incorrectos');
-
   const passwordCoincide = await bcrypt.compare(password, cliente.password_hash);
-  if (!passwordCoincide) throw new Error('Contraseña incorrecta');
+  if (!passwordCoincide) throw new Error('RUT o contraseña incorrectos');
 
   return { id: cliente.id, nombre: cliente.nombre };
 }

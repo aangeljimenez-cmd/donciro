@@ -18,7 +18,7 @@ import Footer from "../components/Footer.astro";
 
         <div id="carrito-resumen" class="carrito-resumen" style="display:none;">
             <p class="carrito-total">Total: <span id="total-carrito">$0</span></p>
-            <button id="vaciar-carrito" class="btn-secundario">Vaciar carrito</button>
+            <button id="vaciar-carrito" class="btn-vaciar-carrito">Vaciar carrito</button>
 
             <div class="datos-entrega">
                 <h2>Datos de entrega</h2>
@@ -27,9 +27,9 @@ import Footer from "../components/Footer.astro";
                 <textarea id="cliente-direccion" placeholder="Dirección de entrega (calle, número, comuna, referencia)"></textarea>
 
                 <p class="datos-entrega__opcional-label">
-                    ¿Tienes cuenta? Ingresa tu RUT para acumular tus pedidos y aplicar tu descuento (opcional)
+                    Ingresa tu RUT para acumular tus pedidos, aplicar tu descuento y ver el estado de tu compra después
                 </p>
-                <input type="text" id="cliente-rut" placeholder="RUT (opcional)" />
+                <input type="text" id="cliente-rut" placeholder="RUT (ej: 12.345.678-9)" required />
                 <input type="email" id="cliente-email" placeholder="Email (opcional)" />
 
                 <p id="checkout-error" class="checkout-error" style="display:none;"></p>
@@ -205,6 +205,8 @@ import Footer from "../components/Footer.astro";
   });
 
   document.getElementById("vaciar-carrito").addEventListener("click", () => {
+    const confirmado = confirm("¿Seguro que quieres vaciar el carrito? Perderás los productos que agregaste.");
+    if (!confirmado) return;
     clearCart();
     render();
   });
@@ -218,8 +220,8 @@ import Footer from "../components/Footer.astro";
     const rut = document.getElementById("cliente-rut").value.trim();
     const email = document.getElementById("cliente-email").value.trim();
 
-    if (!nombre || !telefono || !direccion) {
-      errorMsg.textContent = "Completa nombre, teléfono y dirección de entrega.";
+    if (!nombre || !telefono || !direccion || !rut) {
+      errorMsg.textContent = "Completa nombre, teléfono, dirección y RUT.";
       errorMsg.style.display = "block";
       return;
     }
@@ -240,7 +242,7 @@ import Footer from "../components/Footer.astro";
           nombre,
           telefono,
           direccion,
-          rut: rut || undefined,
+          rut,
           email: email || undefined,
           items,
         }),
@@ -445,6 +447,20 @@ import Footer from "../components/Footer.astro";
 .carrito-total {
     font-size: 1.4rem;
     font-weight: bold;
+}
+.btn-vaciar-carrito {
+    background: none;
+    border: none;
+    padding: 4px 0;
+    margin-top: 4px;
+    color: #a3a3a3;
+    font-size: 0.82rem;
+    text-decoration: underline;
+    cursor: pointer;
+    transition: color .2s;
+}
+.btn-vaciar-carrito:hover {
+    color: #707070;
 }
 .datos-entrega {
     text-align: left;

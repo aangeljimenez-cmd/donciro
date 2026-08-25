@@ -1,0 +1,80 @@
+---
+import Layout from '../layouts/MainLayout.astro';
+import PanelNavbar from '../components/PanelNavbar.astro';
+import Footer from '../components/Footer.astro';
+import { estaAutorizado } from '../lib/auth.js';
+
+const autorizado = estaAutorizado(Astro.request);
+
+if (!autorizado) {
+  Astro.response.status = 401;
+  Astro.response.headers.set('WWW-Authenticate', 'Basic realm="Panel proveedor"');
+}
+
+const secciones = [
+  { href: '/ingreso-compra', titulo: 'Ingreso de compra', descripcion: 'Suma stock a productos existentes o crea productos nuevos.' },
+  { href: '/inventario', titulo: 'Toma de inventario', descripcion: 'Reemplaza el stock contado y calcula ganancia y merma.' },
+  { href: '/pedidos', titulo: 'Pedidos', descripcion: 'Revisa y gestiona el estado de los pedidos.' },
+  { href: '/historial-pedidos', titulo: 'Historial de pedidos', descripcion: 'Consulta pedidos anteriores.' },
+  { href: '/pesaje', titulo: 'Pesaje', descripcion: 'Registra el peso real de pedidos pendientes.' },
+];
+---
+
+<Layout title="Panel proveedor">
+  {!autorizado ? (
+    <p style="text-align:center; margin:60px;">Acceso restringido.</p>
+  ) : (
+    <>
+      <PanelNavbar />
+      <main class="panel-inicio">
+        <h1 class="titulo-seccion">Panel proveedor</h1>
+        <div class="panel-inicio__grid">
+          {secciones.map((s) => (
+            <a href={s.href} class="panel-inicio__card">
+              <h2>{s.titulo}</h2>
+              <p>{s.descripcion}</p>
+            </a>
+          ))}
+        </div>
+      </main>
+      <Footer />
+    </>
+  )}
+</Layout>
+
+<style is:global>
+.panel-inicio {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.panel-inicio__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 16px;
+  margin-top: 1.5rem;
+}
+.panel-inicio__card {
+  display: block;
+  padding: 18px;
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+  background: #f9fafb;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s, transform 0.15s;
+}
+.panel-inicio__card:hover {
+  box-shadow: 0 4px 14px rgba(0,0,0,0.08);
+  transform: translateY(-2px);
+}
+.panel-inicio__card h2 {
+  margin: 0 0 6px;
+  font-size: 1.05rem;
+}
+.panel-inicio__card p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+</style>

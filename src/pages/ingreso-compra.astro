@@ -1,0 +1,418 @@
+---
+import Layout from '../layouts/MainLayout.astro';
+import PanelNavbar from '../components/PanelNavbar.astro';
+import Footer from '../components/Footer.astro';
+import { pool } from '../lib/db.js';
+import { estaAutorizado } from '../lib/auth.js';
+
+const autorizado = estaAutorizado(Astro.request);
+
+if (!autorizado) {
+  Astro.response.status = 401;
+  Astro.response.headers.set('WWW-Authenticate', 'Basic realm="Panel proveedor"');
+}
+
+let categorias = [];
+let marcas = [];
+let unidades = [];
+
+if (autorizado) {
+  const [[cats], [mrcs], [unds]] = await Promise.all([
+    pool.query('SELECT id, name FROM categoria ORDER BY name'),
+    pool.query('SELECT id, name FROM marcas ORDER BY name'),
+    pool.query('SELECT id, name FROM unidad_medida ORDER BY name'),
+  ]);
+  categorias = cats;
+  marcas = mrcs;
+  unidades = unds;
+}
+---
+
+<Layout title="Ingresar compra - Panel proveedor">
+  {!autorizado ? (
+    <p style="text-align:center; margin:60px;">Acceso restringido.</p>
+  ) : (
+    <>
+      <PanelNavbar />
+      <main class="compra-page">
+        <h1 class="titulo-seccion">Ingresar compra</h1>
+        <p class="compra-subtitulo">
+          Escribe el nombre tal como está en el sistema para sumar stock a un producto existente,
+          o uno nuevo para crearlo.
+        </p>
+
+        <div id="filas-productos"></div>
+
+        <button id="btn-agregar-fila" type="button" class="btn-secundario">+ Agregar producto</button>
+
+        <div class="compra-acciones">
+          <p id="compra-error" class="compra-error" style="display:none;"></p>
+          <p id="compra-ok" class="compra-ok" style="display:none;"></p>
+          <button id="btn-guardar-compra" type="button" class="btn-principal">Guardar compra</button>
+        </div>
+      </main>
+      <Footer />
+    </>
+  )}
+</Layout>
+
+{autorizado && (
+  <script define:vars={{ categorias, marcas, unidades }}>
+    window.__CATEGORIAS__ = categorias;
+    window.__MARCAS__ = marcas;
+    window.__UNIDADES__ = unidades;
+  </script>
+)}
+
+<script>
+  // ids de unidad_medida que representan cantidades fraccionables (kg, litro)
+  const UNIDADES_FRACCIONABLES = ['2', '3'];
+
+  const contenedor = document.getElementById('filas-productos');
+  let contadorFilas = 0;
+  const timersBusqueda = new Map();
+
+  function opciones(lista) {
+    return lista.map((o) => `<option value="${o.id}">${o.name}</option>`).join('');
+  }
+
+  function formatoPesos(n) {
+    return `$${Number(n).toLocaleString('es-CL')}`;
+  }
+
+  function actualizarStepCantidad(fila, idUmedida) {
+    const campoCantidad = fila.querySelector('.campo-cantidad');
+    const esFraccionable = UNIDADES_FRACCIONABLES.includes(String(idUmedida));
+    campoCantidad.step = esFraccionable ? '0.001' : '1';
+    campoCantidad.min = esFraccionable ? '0.001' : '1';
+  }
+
+  function crearFila() {
+    const id = contadorFilas++;
+    const fila = document.createElement('div');
+    fila.className = 'fila-producto';
+    fila.dataset.filaId = id;
+    fila.innerHTML = `
+      <div class="fila-producto__principal">
+        <div class="fila-producto__campo-nombre-wrap">
+          <input type="text" class="campo-nombre" placeholder="Nombre del producto" autocomplete="off" />
+          <ul class="fila-producto__sugerencias" style="display:none;"></ul>
+        </div>
+        <input type="number" class="campo-cantidad" placeholder="Cantidad" min="1" step="1" />
+        <input type="number" class="campo-precio" placeholder="Precio (opcional si ya existe)" min="0" step="1" />
+        <button type="button" class="btn-quitar-fila" title="Quitar">✕</button>
+      </div>
+      <p class="fila-producto__estado"></p>
+      <div class="fila-producto__nuevo" style="display:none;">
+        <label>Categoría
+          <select class="campo-categoria"><option value="">Selecciona</option>${opciones(window.__CATEGORIAS__ || [])}</select>
+        </label>
+        <label>Marca
+          <select class="campo-marca"><option value="">Selecciona</option>${opciones(window.__MARCAS__ || [])}</select>
+        </label>
+        <label>Unidad de medida
+          <select class="campo-umedida"><option value="">Selecciona</option>${opciones(window.__UNIDADES__ || [])}</select>
+        </label>
+      </div>
+    `;
+    contenedor.appendChild(fila);
+  }
+
+  function marcarComoExistente(fila, producto) {
+    fila.dataset.idProducto = producto.id;
+    const estado = fila.querySelector('.fila-producto__estado');
+    const bloqueNuevo = fila.querySelector('.fila-producto__nuevo');
+    estado.textContent = `Producto existente — stock actual: ${producto.stock}, precio actual: ${formatoPesos(producto.precio)}. Se sumará el stock.`;
+    estado.className = 'fila-producto__estado fila-producto__estado--existe';
+    bloqueNuevo.style.display = 'none';
+    actualizarStepCantidad(fila, producto.id_umedida);
+  }
+
+  function marcarComoNuevo(fila) {
+    delete fila.dataset.idProducto;
+    const estado = fila.querySelector('.fila-producto__estado');
+    const bloqueNuevo = fila.querySelector('.fila-producto__nuevo');
+    estado.textContent = 'Producto nuevo: completa precio, categoría, marca y unidad de medida.';
+    estado.className = 'fila-producto__estado fila-producto__estado--nuevo';
+    bloqueNuevo.style.display = 'flex';
+
+    // Para producto nuevo, el step depende de la unidad que elija en el select
+    const umedidaActual = fila.querySelector('.campo-umedida').value;
+    actualizarStepCantidad(fila, umedidaActual);
+  }
+
+  function limpiarEstado(fila) {
+    delete fila.dataset.idProducto;
+    fila.querySelector('.fila-producto__estado').textContent = '';
+    fila.querySelector('.fila-producto__nuevo').style.display = 'none';
+  }
+
+  function ocultarSugerencias(fila) {
+    const lista = fila.querySelector('.fila-producto__sugerencias');
+    lista.style.display = 'none';
+    lista.innerHTML = '';
+  }
+
+  function mostrarSugerencias(fila, productos) {
+    const lista = fila.querySelector('.fila-producto__sugerencias');
+    if (productos.length === 0) {
+      ocultarSugerencias(fila);
+      return;
+    }
+    lista.innerHTML = productos.map((p) => `
+      <li class="fila-producto__sugerencia" data-id="${p.id}" data-nombre="${p.name.replace(/"/g, '&quot;')}">
+        <span class="fila-producto__sugerencia-nombre">${p.name}</span>
+        <span class="fila-producto__sugerencia-detalle">stock ${p.stock} · ${formatoPesos(p.precio)}</span>
+      </li>
+    `).join('');
+    lista.style.display = 'block';
+  }
+
+  async function buscarSugerencias(fila) {
+    const nombreInput = fila.querySelector('.campo-nombre');
+    const nombre = nombreInput.value.trim();
+
+    if (!nombre) {
+      limpiarEstado(fila);
+      ocultarSugerencias(fila);
+      return;
+    }
+
+    const res = await fetch(`/api/productos/buscar?nombre=${encodeURIComponent(nombre)}`);
+    const data = await res.json();
+    const resultados = data.resultados || [];
+
+    mostrarSugerencias(fila, resultados);
+
+    const coincidenciaExacta = resultados.find((p) => p.name.toLowerCase() === nombre.toLowerCase());
+    if (coincidenciaExacta) {
+      marcarComoExistente(fila, coincidenciaExacta);
+    } else {
+      marcarComoNuevo(fila);
+    }
+  }
+
+  contenedor.addEventListener('input', (e) => {
+    if (!e.target.classList.contains('campo-nombre')) return;
+    const fila = e.target.closest('.fila-producto');
+    const filaId = fila.dataset.filaId;
+
+    delete fila.dataset.idProducto;
+
+    clearTimeout(timersBusqueda.get(filaId));
+    timersBusqueda.set(filaId, setTimeout(() => buscarSugerencias(fila), 300));
+  });
+
+  // Cuando cambian la unidad de medida de un producto nuevo, ajustamos el step de cantidad
+  contenedor.addEventListener('change', (e) => {
+    if (!e.target.classList.contains('campo-umedida')) return;
+    const fila = e.target.closest('.fila-producto');
+    if (fila.dataset.idProducto) return; // solo aplica a productos nuevos
+    actualizarStepCantidad(fila, e.target.value);
+  });
+
+  contenedor.addEventListener('mousedown', (e) => {
+    const item = e.target.closest('.fila-producto__sugerencia');
+    if (!item) return;
+    e.preventDefault();
+
+    const fila = item.closest('.fila-producto');
+    const nombreInput = fila.querySelector('.campo-nombre');
+    nombreInput.value = item.dataset.nombre;
+
+    ocultarSugerencias(fila);
+    buscarSugerencias(fila);
+  });
+
+  contenedor.addEventListener('focusout', (e) => {
+    if (!e.target.classList.contains('campo-nombre')) return;
+    const fila = e.target.closest('.fila-producto');
+    setTimeout(() => ocultarSugerencias(fila), 150);
+  });
+
+  contenedor.addEventListener('click', (e) => {
+    if (e.target.classList.contains('btn-quitar-fila')) {
+      e.target.closest('.fila-producto').remove();
+    }
+  });
+
+  document.getElementById('btn-agregar-fila').addEventListener('click', crearFila);
+  crearFila();
+
+  document.getElementById('btn-guardar-compra').addEventListener('click', async () => {
+    const errorMsg = document.getElementById('compra-error');
+    const okMsg = document.getElementById('compra-ok');
+    errorMsg.style.display = 'none';
+    okMsg.style.display = 'none';
+
+    const filas = Array.from(contenedor.querySelectorAll('.fila-producto'));
+    const items = filas.map((fila) => ({
+      nombre: fila.querySelector('.campo-nombre').value.trim(),
+      cantidad: fila.querySelector('.campo-cantidad').value,
+      precio: fila.querySelector('.campo-precio').value || undefined,
+      id: fila.dataset.idProducto || undefined,
+      id_cat: fila.querySelector('.campo-categoria')?.value || undefined,
+      id_mar: fila.querySelector('.campo-marca')?.value || undefined,
+      id_umedida: fila.querySelector('.campo-umedida')?.value || undefined,
+    })).filter((i) => i.nombre);
+
+    if (items.length === 0) {
+      errorMsg.textContent = 'Agrega al menos un producto.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+
+    const boton = document.getElementById('btn-guardar-compra');
+    boton.disabled = true;
+    boton.textContent = 'Guardando...';
+
+    try {
+      const res = await fetch('/api/compras', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo guardar la compra.');
+
+      const resumen = data.resultado
+        .map((r) => r.accion === 'creado'
+          ? `${r.nombre}: creado con stock ${r.stock_total}`
+          : `${r.nombre}: stock actualizado a ${r.stock_total}`)
+        .join(' · ');
+
+      okMsg.textContent = `Compra ingresada correctamente. ${resumen}`;
+      okMsg.style.display = 'block';
+
+      contenedor.innerHTML = '';
+      crearFila();
+    } catch (err) {
+      errorMsg.textContent = err.message;
+      errorMsg.style.display = 'block';
+    } finally {
+      boton.disabled = false;
+      boton.textContent = 'Guardar compra';
+    }
+  });
+</script>
+
+<style is:global>
+.compra-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.compra-subtitulo {
+  color: var(--text-muted, #666);
+  margin-bottom: 1.5rem;
+}
+.fila-producto {
+  background: #f4f7fb;
+  border: 1px solid #e3e8f0;
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.fila-producto__principal {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.fila-producto__principal input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 0.95rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+.fila-producto__campo-nombre-wrap {
+  position: relative;
+}
+.fila-producto__sugerencias {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  list-style: none;
+  margin: 0;
+  padding: 4px;
+  max-height: 220px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.fila-producto__sugerencia {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+.fila-producto__sugerencia:hover {
+  background: #f0f4fa;
+}
+.fila-producto__sugerencia-nombre {
+  font-weight: 600;
+}
+.fila-producto__sugerencia-detalle {
+  color: #777;
+  white-space: nowrap;
+}
+.btn-quitar-fila {
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+}
+.fila-producto__estado {
+  margin-top: 8px;
+  font-size: 0.85rem;
+}
+.fila-producto__estado--existe { color: #16a34a; font-weight: 600; }
+.fila-producto__estado--nuevo { color: #d97706; font-weight: 600; }
+.fila-producto__nuevo {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.fila-producto__nuevo label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: #555;
+  flex: 1;
+  min-width: 150px;
+}
+.fila-producto__nuevo select {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+.btn-secundario {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: #fff;
+  cursor: pointer;
+  margin-bottom: 1.5rem;
+}
+.compra-acciones {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #eee;
+}
+.compra-error { color: #c0392b; font-weight: 600; margin-bottom: 10px; }
+.compra-ok { color: #16a34a; font-weight: 600; margin-bottom: 10px; }
+</style>

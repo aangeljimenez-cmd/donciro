@@ -1,0 +1,225 @@
+---
+import Layout from '../layouts/MainLayout.astro';
+import PanelNavbar from '../components/PanelNavbar.astro';
+import Footer from '../components/Footer.astro';
+import { estaAutorizado } from '../lib/auth.js';
+import { obtenerProductosParaInventario } from '../lib/inventario.js';
+
+const autorizado = estaAutorizado(Astro.request);
+
+if (!autorizado) {
+  Astro.response.status = 401;
+  Astro.response.headers.set('WWW-Authenticate', 'Basic realm="Panel proveedor"');
+}
+
+const productos = autorizado ? await obtenerProductosParaInventario() : [];
+
+// ids de unidad_medida que representan cantidades fraccionables (kg, litro)
+const UNIDADES_FRACCIONABLES = [2, 3];
+
+function stepPara(idUmedida) {
+  return UNIDADES_FRACCIONABLES.includes(Number(idUmedida)) ? '0.001' : '1';
+}
+---
+
+<Layout title="Toma de inventario - Panel proveedor">
+  {!autorizado ? (
+    <p style="text-align:center; margin:60px;">Acceso restringido.</p>
+  ) : (
+    <>
+      <PanelNavbar />
+      <main class="inventario-page">
+        <h1 class="titulo-seccion">Toma de inventario</h1>
+        <p class="inventario-subtitulo">
+          Ingresa el nuevo stock contado para cada producto. Al guardar, se reemplaza el stock
+          en el sistema y se genera un registro con fecha, detalle, la ganancia calculada (a partir
+          del precio de cada producto) y la merma frente a la venta real.
+        </p>
+
+        <table class="inventario-tabla">
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th>Precio</th>
+              <th>Stock actual</th>
+              <th>Stock nuevo</th>
+            </tr>
+          </thead>
+          <tbody id="inventario-body">
+            {productos.map((p) => (
+              <tr class="inventario-fila" data-id={p.id} data-stock-actual={p.stock}>
+                <td>{p.name}</td>
+                <td>${Number(p.precio).toLocaleString('es-CL')}</td>
+                <td class="inventario-stock-actual">{p.stock}</td>
+                <td>
+                  <input
+                    type="number"
+                    class="campo-stock-nuevo"
+                    min="0"
+                    step={stepPara(p.id_umedida)}
+                    value={p.stock}
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div class="inventario-acciones">
+          <label class="inventario-venta-label">
+            Venta real del período ($)
+            <input type="number" id="campo-venta-real" min="0" step="1" placeholder="0" />
+          </label>
+
+          <p id="inventario-error" class="inventario-error" style="display:none;"></p>
+          <div id="inventario-ok" class="inventario-ok" style="display:none;"></div>
+          <button id="btn-guardar-inventario" type="button" class="btn-principal">
+            Guardar inventario
+          </button>
+        </div>
+      </main>
+      <Footer />
+    </>
+  )}
+</Layout>
+
+<script>
+  const cuerpo = document.getElementById('inventario-body');
+  const errorMsg = document.getElementById('inventario-error');
+  const okMsg = document.getElementById('inventario-ok');
+  const boton = document.getElementById('btn-guardar-inventario');
+
+  function formatoPesos(n) {
+    return `$${Number(n).toLocaleString('es-CL')}`;
+  }
+
+  boton.addEventListener('click', async () => {
+    errorMsg.style.display = 'none';
+    okMsg.style.display = 'none';
+
+    const ventaReal = document.getElementById('campo-venta-real').value;
+    if (ventaReal === '' || Number(ventaReal) < 0) {
+      errorMsg.textContent = 'Ingresa un monto de venta real válido.';
+      errorMsg.style.display = 'block';
+      return;
+    }
+
+    const filas = Array.from(cuerpo.querySelectorAll('.inventario-fila'));
+    const items = filas.map((fila) => ({
+      id: fila.dataset.id,
+      stock_nuevo: fila.querySelector('.campo-stock-nuevo').value,
+    }));
+
+    const stockInvalido = items.some((i) => i.stock_nuevo === '' || Number(i.stock_nuevo) < 0);
+    if (stockInvalido) {
+      errorMsg.textContent = 'Revisa que todos los productos tengan un stock nuevo válido (0 o mayor).';
+      errorMsg.style.display = 'block';
+      return;
+    }
+
+    const confirmar = confirm(
+      `Vas a reemplazar el stock de ${items.length} productos y generar un nuevo registro de inventario. ¿Continuar?`
+    );
+    if (!confirmar) return;
+
+    boton.disabled = true;
+    boton.textContent = 'Guardando...';
+
+    try {
+      const res = await fetch('/api/inventario', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items, venta_real: ventaReal }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'No se pudo guardar el inventario.');
+
+      const {
+        ganancia_total,
+        venta_real,
+        merma,
+        costo_total_anterior,
+        costo_total_nuevo,
+        detalle,
+      } = data.resultado;
+
+      detalle.forEach((d) => {
+        const fila = cuerpo.querySelector(`.inventario-fila[data-id="${d.id_producto}"]`);
+        if (fila) {
+          fila.dataset.stockActual = d.stock_nuevo;
+          fila.querySelector('.inventario-stock-actual').textContent = d.stock_nuevo;
+        }
+      });
+
+      okMsg.innerHTML = `
+        Inventario guardado correctamente.<br>
+        Costo inventario anterior: <strong>${formatoPesos(costo_total_anterior)}</strong><br>
+        Costo inventario nuevo: <strong>${formatoPesos(costo_total_nuevo)}</strong><br>
+        Ganancia calculada: <strong>${formatoPesos(ganancia_total)}</strong><br>
+        Venta real: <strong>${formatoPesos(venta_real)}</strong><br>
+        Merma: <strong>${formatoPesos(merma)}</strong>
+      `;
+      okMsg.style.display = 'block';
+    } catch (err) {
+      errorMsg.textContent = err.message;
+      errorMsg.style.display = 'block';
+    } finally {
+      boton.disabled = false;
+      boton.textContent = 'Guardar inventario';
+    }
+  });
+</script>
+
+<style is:global>
+.inventario-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+.inventario-subtitulo {
+  color: var(--text-muted, #666);
+  margin-bottom: 1.5rem;
+}
+.inventario-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 1.5rem;
+}
+.inventario-tabla th,
+.inventario-tabla td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #e3e8f0;
+  text-align: left;
+}
+.inventario-tabla th {
+  font-size: 0.8rem;
+  color: #666;
+  text-transform: uppercase;
+}
+.campo-stock-nuevo {
+  width: 100px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+.inventario-acciones {
+  padding-top: 1.5rem;
+  border-top: 1px solid #eee;
+}
+.inventario-venta-label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #555;
+  margin-bottom: 14px;
+  max-width: 220px;
+}
+.inventario-venta-label input {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+.inventario-error { color: #c0392b; font-weight: 600; margin-bottom: 10px; }
+.inventario-ok { color: #16a34a; font-weight: 600; margin-bottom: 10px; }
+</style>

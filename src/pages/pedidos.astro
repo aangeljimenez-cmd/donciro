@@ -1,34 +1,44 @@
 ---
 import Layout from '../layouts/MainLayout.astro';
 import { listarPedidos, obtenerItemsPedido } from '../lib/pedidos.js';
+import { estaAutorizado } from '../lib/auth.js';
+import PanelNavbar from '../components/PanelNavbar.astro';
 
-const authHeader = Astro.request.headers.get('authorization');
-const usuarioValido = import.meta.env.PROVEEDOR_USER;
-const claveValida = import.meta.env.PROVEEDOR_PASS;
-
-function estaAutorizado(header) {
-  if (!header || !header.startsWith('Basic ')) return false;
-  const decoded = Buffer.from(header.slice(6), 'base64').toString('utf-8');
-  const [usuario, clave] = decoded.split(':');
-  return usuario === usuarioValido && clave === claveValida;
-}
-
-const autorizado = estaAutorizado(authHeader);
+const autorizado = estaAutorizado(Astro.request);
 
 if (!autorizado) {
   Astro.response.status = 401;
   Astro.response.headers.set('WWW-Authenticate', 'Basic realm="Panel proveedor"');
 }
 
+const filtroEstado = Astro.url.searchParams.get('estado') || '';
+const filtroDesde = Astro.url.searchParams.get('desde') || '';
+const filtroHasta = Astro.url.searchParams.get('hasta') || '';
+
 let pedidos = [];
 if (autorizado) {
   const base = await listarPedidos();
+  let filtrados = base;
+
+  if (filtroEstado) {
+    filtrados = filtrados.filter((p) => p.estado === filtroEstado);
+  }
+  if (filtroDesde) {
+    const desde = new Date(`${filtroDesde}T00:00:00`);
+    filtrados = filtrados.filter((p) => new Date(p.created_at) >= desde);
+  }
+  if (filtroHasta) {
+    const hasta = new Date(`${filtroHasta}T23:59:59`);
+    filtrados = filtrados.filter((p) => new Date(p.created_at) <= hasta);
+  }
+
   pedidos = await Promise.all(
-    base.map(async (p) => ({ ...p, items: await obtenerItemsPedido(p.id) }))
+    filtrados.map(async (p) => ({ ...p, items: await obtenerItemsPedido(p.id) }))
   );
 }
 
 const pedidosPendientes = pedidos.filter((p) => p.estado !== 'entregado');
+const hayFiltrosActivos = !!(filtroEstado || filtroDesde || filtroHasta);
 
 function formatearMonto(monto) {
   return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(monto);
@@ -40,7 +50,28 @@ function formatearMonto(monto) {
     <p style="text-align:center; margin:60px;">Acceso restringido.</p>
   ) : (
     <div class="panel-container">
+      <PanelNavbar />
       <h1 class="titulo-seccion">Pedidos</h1>
+
+      <form class="filtros-bar" method="get">
+        <select name="estado" class="filtro-select">
+          <option value="" selected={filtroEstado === ''}>Todos los estados</option>
+          <option value="pendiente" selected={filtroEstado === 'pendiente'}>Pendiente</option>
+          <option value="en_preparacion" selected={filtroEstado === 'en_preparacion'}>En preparación</option>
+          <option value="en_ruta" selected={filtroEstado === 'en_ruta'}>En ruta</option>
+          <option value="entregado" selected={filtroEstado === 'entregado'}>Entregado</option>
+        </select>
+        <label class="filtro-fecha">
+          Desde
+          <input type="date" name="desde" value={filtroDesde} />
+        </label>
+        <label class="filtro-fecha">
+          Hasta
+          <input type="date" name="hasta" value={filtroHasta} />
+        </label>
+        <button type="submit" class="btn-filtrar">Filtrar</button>
+        {hayFiltrosActivos && <a href="/pedidos" class="btn-limpiar-filtros">Limpiar</a>}
+      </form>
 
       {pedidosPendientes.length > 0 && (
         <div class="ruta-entrega">
@@ -56,6 +87,10 @@ function formatearMonto(monto) {
         </div>
       )}
 
+      {pedidos.length === 0 && (
+        <p class="sin-pedidos">No hay pedidos que coincidan con estos filtros.</p>
+      )}
+
       <div class="pedidos-lista">
         {pedidos.map((p) => (
           <div class="pedido-card" data-estado={p.estado}>
@@ -64,7 +99,7 @@ function formatearMonto(monto) {
               <span class={`pedido-card__estado pedido-card__estado--${p.estado}`}>{p.estado}</span>
             </div>
 
-            <p><strong>Cliente:</strong> {p.nombre} ({p.telefono}) {p.rut && <>— RUT {p.rut}</>}</p>
+            <p><strong>Cliente:</strong> {p.nombre} ({p.telefono}) {p.rut && <span>— RUT {p.rut}</span>}</p>
             <p><strong>Entrega:</strong> {p.direccion}</p>
             <p><strong>Fecha:</strong> {new Date(p.created_at).toLocaleString('es-CL')}</p>
 
@@ -156,6 +191,54 @@ function formatearMonto(monto) {
 
 <style>
 .panel-container { max-width: 900px; margin: 0 auto; padding: 20px; }
+.filtros-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.filtro-select {
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 0.9rem;
+  background: #fff;
+}
+.filtro-fecha {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #555;
+}
+.filtro-fecha input {
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 0.9rem;
+}
+.btn-filtrar {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #30af25;
+  background: #30af25;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.btn-filtrar:hover { opacity: 0.9; }
+.btn-limpiar-filtros {
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #666;
+  font-size: 0.9rem;
+  text-decoration: none;
+}
+.btn-limpiar-filtros:hover { background: #f4f7fb; }
+.sin-pedidos { text-align: center; color: #888; padding: 30px; }
 .ruta-entrega { background: #fff9d6; border: 1px solid #e6d47a; border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; }
 .ruta-entrega ol { margin: 10px 0 0 20px; }
 .pedidos-lista { display: flex; flex-direction: column; gap: 16px; }

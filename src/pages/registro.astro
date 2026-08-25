@@ -2,6 +2,11 @@
 import Layout from '../layouts/MainLayout.astro';
 import Navbar from '../components/Navbar.astro';
 import Footer from '../components/Footer.astro';
+
+// Si ya tiene sesión activa, no tiene sentido mostrarle el registro de nuevo.
+if (Astro.locals.cliente) {
+  return Astro.redirect('/mis-pedidos');
+}
 ---
 <Layout title="Crear cuenta">
   <Navbar />
@@ -19,6 +24,7 @@ import Footer from '../components/Footer.astro';
         <div class="campo">
           <label for="rut">RUT</label>
           <input type="text" id="rut" name="rut" placeholder="12.345.678-9" required />
+          <span id="rut-aviso" class="campo-aviso" style="display:none;"></span>
         </div>
 
         <div class="campo">
@@ -45,8 +51,40 @@ import Footer from '../components/Footer.astro';
 </Layout>
 
 <script>
+  const rutInput = document.getElementById('rut');
+  const rutAviso = document.getElementById('rut-aviso');
+  let rutYaRegistrado = false;
+
+  rutInput.addEventListener('blur', async () => {
+    const rut = rutInput.value.trim();
+    rutYaRegistrado = false;
+    rutAviso.style.display = 'none';
+    rutAviso.className = 'campo-aviso';
+
+    if (!rut) return;
+
+    const res = await fetch(`/api/clientes/buscar?rut=${encodeURIComponent(rut)}`);
+    const data = await res.json();
+
+    if (data.tieneCuenta) {
+      rutYaRegistrado = true;
+      rutAviso.innerHTML = 'Ya existe una cuenta con este RUT. <a href="/mis-pedidos">Inicia sesión aquí</a>.';
+      rutAviso.style.display = 'block';
+    } else if (data.existe) {
+      rutAviso.innerHTML = 'Encontramos pedidos anteriores con este RUT. Al registrarte, quedarán asociados a tu nueva cuenta.';
+      rutAviso.classList.add('campo-aviso--info');
+      rutAviso.style.display = 'block';
+    }
+  });
+
   document.getElementById('form-registro').addEventListener('submit', async (e) => {
     e.preventDefault();
+
+    if (rutYaRegistrado) {
+      rutAviso.style.display = 'block';
+      return;
+    }
+
     const form = e.target;
     const mensaje = document.getElementById('mensaje');
     mensaje.textContent = '';
@@ -73,13 +111,16 @@ import Footer from '../components/Footer.astro';
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Error al registrar');
 
-      mensaje.textContent = '¡Cuenta creada! Ya puedes ingresar y ver tus pedidos.';
+      mensaje.textContent = '¡Cuenta creada! Redirigiendo a tus pedidos...';
       mensaje.classList.add('ok');
-      form.reset();
+
+      // Ya quedó la cookie de sesión activa: lo llevamos directo a mis-pedidos.
+      setTimeout(() => {
+        window.location.href = '/mis-pedidos';
+      }, 900);
     } catch (err) {
       mensaje.textContent = err.message;
       mensaje.classList.add('error');
-    } finally {
       boton.disabled = false;
       boton.textContent = textoOriginal;
     }
@@ -139,6 +180,23 @@ import Footer from '../components/Footer.astro';
     outline: none;
     border-color: var(--primary, #007dfa);
     box-shadow: 0 0 0 3px rgba(0, 125, 250, 0.15);
+  }
+  .campo-aviso {
+    font-size: 0.82rem;
+    color: #b45309;
+    background: #fff7e6;
+    border: 1px solid #f5cb8c;
+    border-radius: 8px;
+    padding: 6px 10px;
+  }
+  .campo-aviso a {
+    color: var(--primary, #007dfa);
+    font-weight: 600;
+  }
+  .campo-aviso--info {
+    color: #1d4ed8;
+    background: #eff6ff;
+    border-color: #bfdbfe;
   }
   .auth-btn {
     margin-top: 0.5rem;
