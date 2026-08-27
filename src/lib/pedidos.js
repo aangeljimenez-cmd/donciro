@@ -1,6 +1,16 @@
 // src/lib/pedidos.js
+import crypto from 'node:crypto';
 import { pool } from './db.js';
 import { calcularDescuento } from './descuentos.js';
+
+/**
+ * Genera un código de seguimiento aleatorio y no adivinable (160 bits de entropía).
+ * Se usa como clave pública del pedido en vez del id correlativo, para que
+ * nadie pueda ver el pedido de otra persona probando números consecutivos.
+ */
+function generarCodigoSeguimiento() {
+  return crypto.randomBytes(20).toString('hex');
+}
 
 export async function buscarClientePorRut(rut) {
   const [rows] = await pool.query(
@@ -57,15 +67,23 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
       if (producto.precio === null) {
         throw new Error(`Producto "${producto.name}" no tiene precio asignado`);
       }
+
+      const esPeso = producto.unidad === 'kg' || producto.unidad === 'litro';
+
+      // Los productos que se venden por unidad nunca pueden pedirse en cantidades
+      // fraccionarias (ej. "0.5 un." de vinagre). Se valida también en el servidor
+      // por si el front-end llega a enviar un valor decimal.
+      if (!esPeso && !Number.isInteger(Number(item.cantidad))) {
+        throw new Error(`"${producto.name}" se vende por unidad; la cantidad debe ser un número entero`);
+      }
+
       if (Number(item.cantidad) < Number(producto.cantidad_minima)) {
-        const esPeso = producto.unidad === 'kg' || producto.unidad === 'litro';
         const mensajeMinimo = esPeso
           ? `${Number(producto.cantidad_minima) * 1000} ${producto.unidad === 'kg' ? 'gr' : 'ml'}`
           : `${Number(producto.cantidad_minima)} unidades`;
         throw new Error(`"${producto.name}" tiene una compra mínima de ${mensajeMinimo}`);
       }
 
-      const esPeso = producto.unidad === 'kg' || producto.unidad === 'litro';
       const tolerancia = esPeso ? 0.05 : 0;
       if (producto.stock < Number(item.cantidad) - tolerancia) {
         throw new Error(`Stock insuficiente para "${producto.name}"`);
@@ -87,12 +105,13 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
     const descuentoPct = await calcularDescuento(cliente?.id ?? null, subtotal);
     const descuentoMonto = Number((subtotal * descuentoPct) / 100);
     const total = Number(subtotal - descuentoMonto);
+    const codigoSeguimiento = generarCodigoSeguimiento();
 
     const [result] = await conn.query(
       `INSERT INTO pedidos
-        (cliente_id, nombre, cliente_telefono, rut, direccion_entrega, subtotal, descuento_pct, descuento_monto, total, estado)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente')`,
-      [cliente.id, nombre, telefono, rut, direccion, subtotal, descuentoPct, descuentoMonto, total]
+        (cliente_id, nombre, cliente_telefono, rut, direccion_entrega, subtotal, descuento_pct, descuento_monto, total, estado, codigo_seguimiento)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
+      [cliente.id, nombre, telefono, rut, direccion, subtotal, descuentoPct, descuentoMonto, total, codigoSeguimiento]
     );
     const pedidoId = result.insertId;
 
@@ -109,6 +128,7 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
 
     return {
       id: pedidoId,
+      codigo: codigoSeguimiento,
       nombre,
       telefono,
       direccion,
@@ -231,26 +251,39 @@ export async function registrarCantidadesReales(items) {
   }
 }
 
-/** Obtiene un pedido por id junto con sus items, para la página de seguimiento. */
-export async function obtenerPedidoPorId(pedidoId) {
+/**
+ * Obtiene un pedido por su código de seguimiento (token aleatorio no adivinable),
+ * para la página pública de seguimiento.
+ *
+ * IMPORTANTE: nunca buscar el pedido por su id correlativo aquí. Antes se hacía
+ * así (`obtenerPedidoPorId`) y cualquiera podía ver el pedido de otra persona
+ * con solo cambiar el número en la URL (`/seguimiento?pedido=3`). El código de
+ * seguimiento se genera con 160 bits de aleatoriedad al crear el pedido, así
+ * que no es adivinable ni enumerable.
+ */
+export async function obtenerPedidoPorCodigo(codigo) {
+  if (!codigo || typeof codigo !== 'string') return null;
+
   const [rows] = await pool.query(
     `SELECT id, nombre, cliente_telefono AS telefono, direccion_entrega AS direccion,
-            subtotal, descuento_pct, descuento_monto, total, estado, created_at
+            subtotal, descuento_pct, descuento_monto, total, estado, created_at,
+            codigo_seguimiento AS codigo
      FROM pedidos
-     WHERE id = ?`,
-    [pedidoId]
+     WHERE codigo_seguimiento = ?`,
+    [codigo]
   );
   if (rows.length === 0) return null;
 
   const pedido = rows[0];
-  pedido.items = await obtenerItemsPedido(pedidoId);
+  pedido.items = await obtenerItemsPedido(pedido.id);
   return pedido;
 }
 
 /** Lista los pedidos de un cliente registrado, más recientes primero. */
 export async function obtenerPedidosPorCliente(clienteId) {
   const [rows] = await pool.query(
-    `SELECT id, subtotal, descuento_pct, descuento_monto, total, estado, created_at
+    `SELECT id, subtotal, descuento_pct, descuento_monto, total, estado, created_at,
+            codigo_seguimiento AS codigo
      FROM pedidos WHERE cliente_id = ? ORDER BY created_at DESC`,
     [clienteId]
   );
