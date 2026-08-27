@@ -4,6 +4,7 @@ import Navbar from '../components/Navbar.astro';
 import Footer from '../components/Footer.astro';
 import { obtenerPedidosPorCliente } from '../lib/pedidos.js';
 
+export const prerender = false;
 const cliente = Astro.locals.cliente;
 let pedidos = [];
 if (cliente) {
