@@ -36,34 +36,36 @@ function stepPara(idUmedida) {
           del precio de cada producto) y la merma frente a la venta real.
         </p>
 
-        <table class="inventario-tabla">
-          <thead>
-            <tr>
-              <th>Producto</th>
-              <th>Precio</th>
-              <th>Stock actual</th>
-              <th>Stock nuevo</th>
-            </tr>
-          </thead>
-          <tbody id="inventario-body">
-            {productos.map((p) => (
-              <tr class="inventario-fila" data-id={p.id} data-stock-actual={p.stock}>
-                <td>{p.name}</td>
-                <td>${Number(p.precio).toLocaleString('es-CL')}</td>
-                <td class="inventario-stock-actual">{p.stock}</td>
-                <td>
-                  <input
-                    type="number"
-                    class="campo-stock-nuevo"
-                    min="0"
-                    step={stepPara(p.id_umedida)}
-                    value={p.stock}
-                  />
-                </td>
+        <div class="inventario-tabla-wrap">
+          <table class="inventario-tabla">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Precio</th>
+                <th>Stock actual</th>
+                <th>Stock nuevo</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody id="inventario-body">
+              {productos.map((p) => (
+                <tr class="inventario-fila" data-id={p.id} data-stock-actual={p.stock}>
+                  <td>{p.name}</td>
+                  <td>${Number(p.precio).toLocaleString('es-CL')}</td>
+                  <td class="inventario-stock-actual">{p.stock}</td>
+                  <td>
+                    <input
+                      type="number"
+                      class="campo-stock-nuevo"
+                      min="0"
+                      step={stepPara(p.id_umedida)}
+                      value={p.stock}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
         <div class="inventario-acciones">
           <label class="inventario-venta-label">
@@ -180,10 +182,16 @@ function stepPara(idUmedida) {
   color: var(--text-muted, #666);
   margin-bottom: 1.5rem;
 }
+.inventario-tabla-wrap {
+  width: 100%;
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+  -webkit-overflow-scrolling: touch;
+}
 .inventario-tabla {
   width: 100%;
+  min-width: 480px;
   border-collapse: collapse;
-  margin-bottom: 1.5rem;
 }
 .inventario-tabla th,
 .inventario-tabla td {

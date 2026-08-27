@@ -1,7 +1,21 @@
 <nav class="navbar">
   <div class="container">
     <a class="navbar-brand" href="/">Don Ciro</a>
-    <ul class="nav-links">
+
+    <button
+      id="nav-toggle"
+      class="nav-toggle"
+      type="button"
+      aria-label="Abrir menú"
+      aria-expanded="false"
+      aria-controls="nav-links"
+    >
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+
+    <ul class="nav-links" id="nav-links">
       <li><a class="nav-link" href="/">Inicio</a></li>
       <li><a class="nav-link" href="/producto">Productos</a></li>
       <li><a class="nav-link" href="/nosotros">Nosotros</a></li>
@@ -11,3 +25,26 @@
     </ul>
   </div>
 </nav>
+
+<script>
+  const navToggle = document.getElementById('nav-toggle');
+  const navLinks = document.getElementById('nav-links');
+
+  if (navToggle && navLinks) {
+    navToggle.addEventListener('click', () => {
+      const abierto = navLinks.classList.toggle('nav-links--abierto');
+      navToggle.classList.toggle('nav-toggle--activo', abierto);
+      navToggle.setAttribute('aria-expanded', String(abierto));
+      navToggle.setAttribute('aria-label', abierto ? 'Cerrar menú' : 'Abrir menú');
+    });
+
+    navLinks.querySelectorAll('.nav-link').forEach((link) => {
+      link.addEventListener('click', () => {
+        navLinks.classList.remove('nav-links--abierto');
+        navToggle.classList.remove('nav-toggle--activo');
+        navToggle.setAttribute('aria-expanded', 'false');
+        navToggle.setAttribute('aria-label', 'Abrir menú');
+      });
+    });
+  }
+</script>

@@ -415,4 +415,19 @@ if (autorizado) {
 }
 .compra-error { color: #c0392b; font-weight: 600; margin-bottom: 10px; }
 .compra-ok { color: #16a34a; font-weight: 600; margin-bottom: 10px; }
+
+@media (max-width: 600px) {
+  .compra-page {
+    padding: 15px;
+  }
+
+  .fila-producto__principal {
+    grid-template-columns: 1fr;
+  }
+
+  .btn-quitar-fila {
+    justify-self: end;
+    width: 100%;
+  }
+}
 </style>
