@@ -24,6 +24,13 @@ function getGrupo(categoria) {
   if (["frutos secos", "semillas"].includes(cat)) return "frutos-secos";
   return "default";
 }
+
+// Los productos que se venden por unidad nunca pueden tener un mínimo
+// fraccionario, sin importar lo que traiga cantidad_minima en la base de
+// datos (esto es lo que provocaba, ej., "0.5 un." de vinagre en el carrito).
+function minUnidad(cantidadMinima) {
+  return Math.max(1, Math.round(Number(cantidadMinima)));
+}
 ---
 
 <MainLayout title="Productos">
@@ -70,10 +77,10 @@ function getGrupo(categoria) {
               type="number"
               class="input-unidades"
               data-id={p.id}
-              data-min={Number(p.cantidad_minima)}
-              min={Number(p.cantidad_minima)}
+              data-min={minUnidad(p.cantidad_minima)}
+              min={minUnidad(p.cantidad_minima)}
               step="1"
-              value={Number(p.cantidad_minima)}
+              value={minUnidad(p.cantidad_minima)}
             />
             <button class="btn-comprar" data-id={p.id} data-unidad={p.unidad}>Comprar</button>
           </div>
@@ -127,8 +134,12 @@ function getGrupo(categoria) {
         cantidad = valor / 1000;
       } else {
         const input = document.querySelector(`.input-unidades[data-id="${id}"]`);
-        const min = Number(input.dataset.min);
-        const unidades = Math.max(min, Math.floor(Number(input.value)) || min);
+        // Nunca aceptar decimales para productos por unidad. Antes, si el
+        // valor ingresado era menor a 1, Math.floor daba 0 (falsy) y el
+        // "|| min" caía de vuelta a un mínimo fraccionario (ej. 0.5).
+        const min = Math.max(1, Math.floor(Number(input.dataset.min)) || 1);
+        const valorIngresado = Math.floor(Number(input.value));
+        const unidades = Number.isFinite(valorIngresado) ? Math.max(min, valorIngresado) : min;
         input.value = unidades;
         cantidad = unidades;
       }

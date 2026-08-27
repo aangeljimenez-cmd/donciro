@@ -1,9 +1,12 @@
 ---
 import Layout from '../layouts/MainLayout.astro';
-import { obtenerPedidoPorId } from '../lib/pedidos.js';
+import { obtenerPedidoPorCodigo } from '../lib/pedidos.js';
 
-const pedidoId = Astro.url.searchParams.get('pedido');
-const pedido = pedidoId ? await obtenerPedidoPorId(Number(pedidoId)) : null;
+// Se busca por un código de seguimiento aleatorio, no por el id correlativo
+// del pedido, para que nadie pueda ver el pedido de otra persona probando
+// números consecutivos en la URL.
+const codigo = Astro.url.searchParams.get('codigo');
+const pedido = codigo ? await obtenerPedidoPorCodigo(codigo) : null;
 
 const ESTADOS_LABEL = {
   pendiente: 'Pendiente',

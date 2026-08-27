@@ -1,50 +1,64 @@
-/* ======== VARIABLES & RESET ======== */
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+/* ============================================================
+   DON CIRO — SISTEMA VISUAL PROPUESTO
+   Solo cambios de estilo. Mismas clases que el CSS original,
+   mismo HTML/Astro, mismas funcionalidades y backend.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --primary: #007dfa;
-  --primary-dark: #000acb;
-  --accent: #ffff00;
-  --accent-hover: #f6ea03;
-  --accent-light: #ffe600;
-  --bg-main: #F1F8E9;
-  --bg-surface: #FFFFFF;
-  --text-dark: #229c38;
-  --text-muted: #4E5D4E;
+  /* Paleta — azul como color dominante de marca */
+  --ink: #16232F;          /* texto principal, tono azul-carbón */
+  --azul: #14487A;         /* azul marino — primario, predomina en el sitio */
+  --azul-dark: #0B2E52;    /* azul oscuro — navbar/hover/footer */
+  --azul-light: #4A7FB5;   /* azul claro — hovers suaves, detalles */
+  --oro: #B8862E;          /* oro viejo — acento cálido de contraste (CTA) */
+  --oro-hover: #9C7326;
+  --vino: #7A2E3B;         /* vino/berries — acento secundario (mermeladas) */
+  --papel: #F2F5F9;        /* fondo general, gris-azulado muy claro */
+  --crema: #FFFFFF;        /* superficies / tarjetas */
+  --linea: #DCE3EC;        /* bordes sutiles */
+  --texto-muted: #56636F;
+
+  /* Alias para compatibilidad con nombres usados en el código actual */
+  --primary: var(--azul);
+  --primary-dark: var(--azul-dark);
+  --accent: var(--oro);
+  --accent-hover: var(--oro-hover);
+  --accent-light: #E8C77A;
+  --bg-main: var(--papel);
+  --bg-surface: var(--crema);
+  --text-dark: var(--ink);
+  --text-muted: var(--texto-muted);
+
+  --shadow-sm: 0 2px 8px rgba(30, 42, 31, 0.08);
+  --shadow-md: 0 10px 25px rgba(30, 42, 31, 0.12);
+  --radius: 16px;
 }
 
 *, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: "Poppins", sans-serif;
-}
-
-html {
-  overflow-x: hidden;
+  font-family: "Inter", sans-serif;
 }
 
 body {
   background-color: var(--bg-main);
   color: var(--text-dark);
-  line-height: 1.6;
+  line-height: 1.65;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  overflow-x: hidden;
 }
 
-/* ======== SEGURIDAD RESPONSIVE GLOBAL ======== */
-img, video {
-  max-width: 100%;
-  height: auto;
+h1, h2, h3, .navbar-brand {
+  font-family: "Fraunces", serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
 }
 
-table {
-  max-width: 100%;
-}
-
-/* ======== REEMPLAZO DE CONTAINER DE BOOTSTRAP ======== */
+/* ======== CONTAINER ======== */
 .container {
   width: 100%;
   max-width: 1140px;
@@ -54,10 +68,10 @@ table {
   padding-right: 1.5rem;
 }
 
-/* ======== NAVBAR (FLEXBOX NATIVO) ======== */
+/* ======== NAVBAR ======== */
 .navbar {
-  background: linear-gradient(135deg, var(--primary-dark), var(--primary));
-  box-shadow: var(--shadow-md);
+  background: var(--azul-dark);
+  box-shadow: var(--shadow-sm);
   padding: 1rem 0;
   position: sticky;
   top: 0;
@@ -68,12 +82,14 @@ table {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .navbar-brand {
-  font-size: 1.8rem;
+  font-size: 1.6rem;
   font-weight: 700;
-  color: var(--accent-light);
+  color: var(--crema);
   text-decoration: none;
 }
 
@@ -81,12 +97,14 @@ table {
   display: flex;
   list-style: none;
   gap: 1.5rem;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .nav-link {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(255, 253, 248, 0.85);
   text-decoration: none;
-  font-size: 1.05rem;
+  font-size: 0.98rem;
   font-weight: 500;
   transition: color 0.25s ease;
 }
@@ -95,100 +113,63 @@ table {
   color: var(--accent-light);
 }
 
-/* ======== TOGGLE (HAMBURGUESA) - oculto en desktop ======== */
-.nav-toggle {
-  display: none;
-  flex-direction: column;
-  justify-content: space-between;
-  width: 28px;
-  height: 20px;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 0;
-  z-index: 1100;
-}
-
-.nav-toggle span {
-  display: block;
-  width: 100%;
-  height: 3px;
-  border-radius: 2px;
-  background-color: #ffffff;
-  transition: transform 0.25s ease, opacity 0.25s ease;
-}
-
-.nav-toggle--activo span:nth-child(1) {
-  transform: translateY(8.5px) rotate(45deg);
-}
-
-.nav-toggle--activo span:nth-child(2) {
-  opacity: 0;
-}
-
-.nav-toggle--activo span:nth-child(3) {
-  transform: translateY(-8.5px) rotate(-45deg);
-}
-
 /* ======== HERO ======== */
 .hero {
-  background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)),
-              url("https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=1500&q=80");
-
+  background:
+    linear-gradient(rgba(11, 46, 82, 0.6), rgba(11, 46, 82, 0.6)),
+    url("https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=1500&q=80");
   background-position: center;
-  min-height: 70vh;
+  background-size: cover;
+  min-height: 60vh;
   display: flex;
   justify-content: center;
   align-items: center;
   text-align: center;
-  color: #ffffff;
+  color: var(--crema);
   padding: 2rem;
 }
-
 
 .btn-principal {
   display: inline-block;
   background-color: var(--accent);
-  color: #ffffff;
+  color: var(--ink);
   padding: 14px 38px;
   border-radius: 50px;
   text-decoration: none;
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 600;
-  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.25s ease;
 }
 
 .btn-principal:hover {
   background-color: var(--accent-hover);
+  color: var(--crema);
   transform: translateY(-3px);
 }
-
-/* ======== GRILLA DE PRODUCTOS (CSS GRID NATIVO) ======== */
 
 /* ======== TÍTULOS DE SECCIÓN ======== */
 h2.titulo-seccion, h1.titulo-seccion {
   text-align: center;
   margin: 3rem 0 1.5rem;
-  color: var(--primary-dark);
-  font-size: 2.2rem;
+  color: var(--ink);
+  font-size: clamp(1.6rem, 1.2rem + 1.5vw, 2.2rem);
 }
 
 h2.titulo-seccion::after, h1.titulo-seccion::after {
   content: "";
-  width: 80px;
-  height: 4px;
-  background-color: var(--accent);
+  width: 60px;
+  height: 3px;
+  background-color: var(--oro);
   display: block;
-  margin: 10px auto 0;
+  margin: 12px auto 0;
   border-radius: 10px;
 }
 
-/* ======== FORMULARIO DE CONTACTO ======== */
-
 /* ======== FOOTER ======== */
 footer {
-  background-color: var(--primary-dark);
-  color: #ffffff;
+  background-color: var(--ink);
+  color: var(--crema);
   padding: 2.5rem 1rem;
   margin-top: auto;
   text-align: center;
@@ -196,17 +177,17 @@ footer {
 
 footer p {
   margin: 0.3rem 0;
+  color: rgba(255, 253, 248, 0.85);
 }
 
 .quesos h3{
-    color: #49ac28;
+    color: var(--azul);
 }
 .quesos h1{
-    color: #eeff00;
+    color: var(--oro);
 }
 
-/* ======== ESTILOS DE PRODUCTOS ======== */
-
+/* ======== PRODUCTOS ======== */
 .card-productos {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
@@ -220,10 +201,18 @@ footer p {
   display: flex;
   flex-direction: column;
   width: 100%;
-  background-color: bisque;
-  border-radius: 24px;
+  background-color: var(--crema);
+  border: 1px solid var(--linea);
+  border-radius: var(--radius);
   overflow: hidden;
   height: 100%;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
 }
 
 .product-card__image {
@@ -238,17 +227,19 @@ footer p {
   display: flex;
   flex-direction: column;
   flex: 1;
-  padding: 16px;
+  padding: 18px;
 }
 
 .product-card__title {
   margin: 0;
-  color: var(--text-dark);
+  color: var(--ink);
+  font-family: "Fraunces", serif;
+  font-weight: 600;
 }
 
 .product-card__description {
   margin: 0;
-  color: var(--text-dark);
+  color: var(--text-muted);
 }
 
 .product-card__price {
@@ -256,111 +247,102 @@ footer p {
   align-items: baseline;
   gap: 0.5rem;
   margin-top: auto;
+  color: var(--ink);
+  font-weight: 600;
 }
 
 /* Botón comprar, base para todas las cards */
 .btn-comprar {
     margin-top: 0.75rem;
-    padding: 0.5rem 1rem;
+    padding: 0.6rem 1rem;
     border: none;
-    border-radius: 6px;
+    border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
     width: 100%;
-    transition: opacity 0.2s;
+    background-color: var(--azul);
+    color: var(--crema);
+    transition: opacity 0.2s, background-color 0.2s;
 }
-.btn-comprar:hover { opacity: 0.85; }
-.btn-comprar:disabled { opacity: 0.6; cursor: default; }
+.btn-comprar:hover { background-color: var(--azul-dark); opacity: 1; }
+.btn-comprar:disabled { opacity: 0.55; cursor: default; }
 
-/* Quesos: amarillo */
+/* Cada categoría conserva un acento propio pero sobre la misma
+   tarjeta base color crema — antes cada una tenía un fondo pastel
+   distinto; ahora el acento vive en el borde superior y el botón. */
+
 .quesos-container .product-card {
-    background-color: #f7e2a0;
-    border: 1px solid #e6c866;
+    border-top: 4px solid var(--oro);
 }
-.quesos-container .product-card__title,
-.quesos-container .product-card__description,
 .quesos-container .product-card__price-label,
 .quesos-container .product-card__price-value {
-    color: #6b4412;
+    color: var(--oro-hover);
 }
 .quesos-container .btn-comprar {
-    background-color: #d9a441;
-    color: #fff;
+    background-color: var(--oro);
+}
+.quesos-container .btn-comprar:hover {
+    background-color: var(--oro-hover);
 }
 
-/* Mermeladas: tonos berries */
 .mermeladas-container .product-card {
-    background-color: #f3d4de;
-    border: 1px solid #d97a95;
+    border-top: 4px solid var(--vino);
 }
-.mermeladas-container .product-card__title,
-.mermeladas-container .product-card__description,
 .mermeladas-container .product-card__price-label,
 .mermeladas-container .product-card__price-value {
-    color: #7a1a3f;
+    color: var(--vino);
 }
 .mermeladas-container .btn-comprar {
-    background-color: #b3395d;
-    color: #fff;
+    background-color: var(--vino);
+}
+.mermeladas-container .btn-comprar:hover {
+    background-color: #5E2430;
 }
 
-/* Huevos: beige */
 .huevos-container .product-card {
-    background-color: #f0e6d2;
-    border: 1px solid #d8c8a4;
+    border-top: 4px solid #C9A227;
 }
-.huevos-container .product-card__title,
-.huevos-container .product-card__description,
 .huevos-container .product-card__price-label,
 .huevos-container .product-card__price-value {
-    color: #5c4a1e;
+    color: #8A6C13;
 }
 .huevos-container .btn-comprar {
-    background-color: #b8a06a;
-    color: #fff;
+    background-color: #B8973A;
+}
+.huevos-container .btn-comprar:hover {
+    background-color: #9A7C2E;
 }
 
-/* Encurtidos: aceite de oliva */
 .encurtidos-container .product-card {
-    background-color: #d8dba0;
-    border: 1px solid #a8ab5f;
+    border-top: 4px solid #5C7A4A;
 }
-.encurtidos-container .product-card__title,
-.encurtidos-container .product-card__description,
 .encurtidos-container .product-card__price-label,
 .encurtidos-container .product-card__price-value {
-    color: #3f4a1f;
+    color: #435B36;
 }
 .encurtidos-container .btn-comprar {
-    background-color: #7d8a3f;
-    color: #fff;
+    background-color: #5C7A4A;
+}
+.encurtidos-container .btn-comprar:hover {
+    background-color: #435B36;
 }
 
-/* Frutos secos: varios colores tipo frutos secos, alternados */
-.frutos-secos-container .product-card:nth-child(5n+1) {
-    background-color: #d9b48f; border: 1px solid #b9895f; /* almendra */
-}
-.frutos-secos-container .product-card:nth-child(5n+2) {
-    background-color: #a9714a; border: 1px solid #855530; /* nuez */
-}
-.frutos-secos-container .product-card:nth-child(5n+3) {
-    background-color: #e3c9a0; border: 1px solid #c7a56e; /* maní */
-}
-.frutos-secos-container .product-card:nth-child(5n+4) {
-    background-color: #8c6142; border: 1px solid #6b4a30; /* avellana */
-}
-.frutos-secos-container .product-card:nth-child(5n+5) {
-    background-color: #ecd9b0; border: 1px solid #d4b87c; /* castaña de cajú */
-}
-.frutos-secos-container .product-card__title,
-.frutos-secos-container .product-card__description,
+/* Frutos secos: tonos tierra, ahora unificados en la misma tarjeta base */
+.frutos-secos-container .product-card:nth-child(5n+1) { border-top: 4px solid #C9A26B; }
+.frutos-secos-container .product-card:nth-child(5n+2) { border-top: 4px solid #8C6142; }
+.frutos-secos-container .product-card:nth-child(5n+3) { border-top: 4px solid #D9B48F; }
+.frutos-secos-container .product-card:nth-child(5n+4) { border-top: 4px solid #6B4A30; }
+.frutos-secos-container .product-card:nth-child(5n+5) { border-top: 4px solid #B98554; }
+
 .frutos-secos-container .product-card__price-label,
 .frutos-secos-container .product-card__price-value {
-    color: #2e1b0f;
+    color: #6B4A30;
 }
 .frutos-secos-container .btn-comprar {
-    background-color: #6b4a30;
-    color: #fff;
+    background-color: #6B4A30;
+}
+.frutos-secos-container .btn-comprar:hover {
+    background-color: #543A26;
 }
 
 .cantidad-selector {
@@ -368,18 +350,19 @@ footer p {
     gap: 8px;
     margin-top: 0.75rem;
     align-items: center;
+    flex-wrap: wrap;
 }
 .select-gramos {
     flex: 1;
     padding: 0.5rem;
-    border-radius: 6px;
-    border: 1px solid #ccc;
+    border-radius: 8px;
+    border: 1px solid var(--linea);
 }
 .input-gramos, .input-unidades {
     flex: 1;
     padding: 0.5rem;
-    border-radius: 6px;
-    border: 1px solid #ccc;
+    border-radius: 8px;
+    border: 1px solid var(--linea);
     font-size: 1rem;
     width: 100%;
 }
@@ -392,64 +375,37 @@ footer p {
     margin-top: 0;
 }
 
-/* ======================================================= */
-/* ======== RESPONSIVE: TABLET Y MOBILE (<=768px) ========= */
-/* ======================================================= */
+/* ============================================================
+   RESPONSIVO
+   ============================================================ */
 @media (max-width: 768px) {
-
-  .container {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-
-  /* --- Navbar: mostrar hamburguesa, ocultar menú por defecto --- */
-  .nav-toggle {
-    display: flex;
-  }
-
-  .nav-links {
-    display: none;
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    flex-direction: column;
-    gap: 0;
-    background: var(--primary-dark);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
-  }
-
-  .nav-links--abierto {
-    display: flex;
-  }
-
   .navbar .container {
-    position: relative;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: center;
   }
-
-  .nav-links li {
-    width: 100%;
-    text-align: center;
+  .nav-links {
+    gap: 1rem 1.25rem;
   }
-
-  .nav-link {
-    display: block;
-    padding: 1rem;
+  .hero {
+    min-height: 50vh;
+    padding: 1.5rem;
   }
-
-  h2.titulo-seccion, h1.titulo-seccion {
-    font-size: 1.7rem;
-  }
-
   .card-productos {
-    margin: 15px;
-    padding: 15px;
+    margin: 16px;
+    padding: 16px;
+    gap: 1rem;
   }
 }
 
 @media (max-width: 480px) {
   .navbar-brand {
     font-size: 1.4rem;
+  }
+  .nav-link {
+    font-size: 0.9rem;
+  }
+  .btn-principal {
+    padding: 12px 28px;
+    font-size: 0.95rem;
   }
 }

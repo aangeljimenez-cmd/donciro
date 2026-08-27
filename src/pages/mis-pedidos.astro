@@ -46,7 +46,7 @@ function formatearMonto(monto) {
           ) : (
             <div class="lista-pedidos">
               {pedidos.map((p) => (
-                <a class={`pedido-card pedido-card--${p.estado}`} href={`/seguimiento?pedido=${p.id}`}>
+                <a class={`pedido-card pedido-card--${p.estado}`} href={`/seguimiento?codigo=${p.codigo}`}>
                   <div class="pedido-card__header">
                     <span class="pedido-card__id">Pedido #{p.id}</span>
                     <span class={`pedido-card__estado pedido-card__estado--${p.estado}`}>
