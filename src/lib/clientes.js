@@ -1,6 +1,7 @@
 // src/lib/clientes.js
 import { pool } from './db.js';
 import bcrypt from 'bcryptjs';
+import { normalizarRut, formatoRutValido } from './rut.js';
 
 /**
  * Registra un cliente nuevo con contraseña, o completa el registro de un cliente
@@ -8,7 +9,12 @@ import bcrypt from 'bcryptjs';
  * tenía contraseña.
  */
 export async function registrarCliente({ nombre, rut, password, telefono }) {
-  const [rows] = await pool.query('SELECT id, password_hash FROM clientes WHERE rut = ?', [rut]);
+  const rutNormalizado = normalizarRut(rut);
+  if (!formatoRutValido(rutNormalizado)) {
+    throw new Error('El RUT ingresado no es válido');
+  }
+
+  const [rows] = await pool.query('SELECT id, password_hash FROM clientes WHERE rut = ?', [rutNormalizado]);
   const passwordHash = await bcrypt.hash(password, 10);
 
   if (rows.length > 0) {
@@ -26,7 +32,7 @@ export async function registrarCliente({ nombre, rut, password, telefono }) {
   const [result] = await pool.query(
     `INSERT INTO clientes (rut, nombre, telefono, password_hash, descuento_individual, creado_en)
      VALUES (?, ?, ?, ?, 0, NOW())`,
-    [rut, nombre, telefono, passwordHash]
+    [rutNormalizado, nombre, telefono, passwordHash]
   );
   return { id: result.insertId };
 }
@@ -37,9 +43,10 @@ export async function registrarCliente({ nombre, rut, password, telefono }) {
  * si existe, si esa cuenta ya tiene contraseña (registro completo) o no.
  */
 export async function buscarClienteParaRegistro(rut) {
+  const rutNormalizado = normalizarRut(rut);
   const [rows] = await pool.query(
     'SELECT id, nombre, password_hash FROM clientes WHERE rut = ?',
-    [rut]
+    [rutNormalizado]
   );
   if (rows.length === 0) {
     return { existe: false, tieneCuenta: false };
@@ -50,9 +57,10 @@ export async function buscarClienteParaRegistro(rut) {
 
 /** Verifica rut + contraseña. Lanza error si no coincide. */
 export async function autenticarCliente({ rut, password }) {
+  const rutNormalizado = normalizarRut(rut);
   const [rows] = await pool.query(
     'SELECT id, nombre, password_hash FROM clientes WHERE rut = ?',
-    [rut]
+    [rutNormalizado]
   );
   if (rows.length === 0) throw new Error('No existe una cuenta con ese RUT');
   const cliente = rows[0];

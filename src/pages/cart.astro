@@ -68,6 +68,7 @@ import Footer from "../components/Footer.astro";
 
 <script>
   import { getCart, removeFromCart, clearCart, updateQuantity } from "../lib/cart.js";
+  import { sanitizarRutEnVivo } from "../lib/rut.js";
 
   const contenedor = document.getElementById("carrito-items");
   const resumen = document.getElementById("carrito-resumen");
@@ -75,6 +76,11 @@ import Footer from "../components/Footer.astro";
   const totalSpan = document.getElementById("total-carrito");
   const ticketContainer = document.getElementById("ticket-container");
   const errorMsg = document.getElementById("checkout-error");
+
+  const rutInput = document.getElementById("cliente-rut");
+  rutInput.addEventListener("input", () => {
+    rutInput.value = sanitizarRutEnVivo(rutInput.value);
+  });
 
   // misma lógica de agrupación por color que en productos.astro
   function getGrupo(categoria) {

@@ -1,6 +1,7 @@
 // src/pages/api/clientes/registro.js
 import { registrarCliente } from '../../../lib/clientes.js';
 import { crearSesion, SESSION_COOKIE_NAME, opcionesCookieSesion } from '../../../lib/auth.js';
+import { normalizarRut } from '../../../lib/rut.js';
 
 export const prerender = false;
 
@@ -23,7 +24,7 @@ export async function POST({ request, cookies }) {
 
     const resultado = await registrarCliente({ nombre, rut, password, telefono });
 
-    const cliente = { id: resultado.id, rut, nombre };
+    const cliente = { id: resultado.id, rut: normalizarRut(rut), nombre };
     const token = await crearSesion(cliente);
     cookies.set(SESSION_COOKIE_NAME, token, opcionesCookieSesion());
 
