@@ -96,8 +96,9 @@ function formatearMonto(monto) {
   </main>
   <Footer />
 </Layout>
-
 <script>
+  import { sanitizarRutEnVivo } from '../lib/rut.js';
+
   const ESTADOS_LABEL = {
     pendiente: 'Pendiente',
     en_preparacion: 'En preparación',
@@ -112,6 +113,13 @@ function formatearMonto(monto) {
   }
   function formatearMonto(monto) {
     return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(monto);
+  }
+
+  const rutInputLogin = document.getElementById('rut');
+  if (rutInputLogin) {
+    rutInputLogin.addEventListener('input', () => {
+      rutInputLogin.value = sanitizarRutEnVivo(rutInputLogin.value);
+    });
   }
 
   const formLogin = document.getElementById('form-login');

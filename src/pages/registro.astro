@@ -51,9 +51,15 @@ if (Astro.locals.cliente) {
 </Layout>
 
 <script>
+  import { sanitizarRutEnVivo } from '../lib/rut.js';
+
   const rutInput = document.getElementById('rut');
   const rutAviso = document.getElementById('rut-aviso');
   let rutYaRegistrado = false;
+
+  rutInput.addEventListener('input', () => {
+    rutInput.value = sanitizarRutEnVivo(rutInput.value);
+  });
 
   rutInput.addEventListener('blur', async () => {
     const rut = rutInput.value.trim();

@@ -2,6 +2,7 @@
 import crypto from 'node:crypto';
 import { pool } from './db.js';
 import { calcularDescuento } from './descuentos.js';
+import { normalizarRut, formatoRutValido } from './rut.js';
 
 /**
  * Genera un código de seguimiento aleatorio y no adivinable (160 bits de entropía).
@@ -13,9 +14,10 @@ function generarCodigoSeguimiento() {
 }
 
 export async function buscarClientePorRut(rut) {
+  const rutNormalizado = normalizarRut(rut);
   const [rows] = await pool.query(
     'SELECT id, nombre, descuento_individual FROM clientes WHERE rut = ?',
-    [rut]
+    [rutNormalizado]
   );
   return rows.length > 0 ? rows[0] : null;
 }
@@ -27,6 +29,10 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
   if (!rut || !rut.trim()) {
     throw new Error('El RUT es obligatorio.');
   }
+  const rutNormalizado = normalizarRut(rut);
+  if (!formatoRutValido(rutNormalizado)) {
+    throw new Error('El RUT ingresado no es válido.');
+  }
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error('El carrito está vacío.');
   }
@@ -35,13 +41,13 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
   try {
     await conn.beginTransaction();
 
-    let cliente = await buscarClientePorRut(rut);
+    let cliente = await buscarClientePorRut(rutNormalizado);
 
     if (!cliente) {
       const [result] = await conn.query(
         `INSERT INTO clientes (rut, nombre, email, telefono, descuento_individual, creado_en)
          VALUES (?, ?, ?, ?, 0, NOW())`,
-        [rut, nombre, email ?? null, telefono]
+        [rutNormalizado, nombre, email ?? null, telefono]
       );
       cliente = { id: result.insertId, nombre, descuento_individual: 0 };
     }
@@ -111,7 +117,7 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
       `INSERT INTO pedidos
         (cliente_id, nombre, cliente_telefono, rut, direccion_entrega, subtotal, descuento_pct, descuento_monto, total, estado, codigo_seguimiento)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
-      [cliente.id, nombre, telefono, rut, direccion, subtotal, descuentoPct, descuentoMonto, total, codigoSeguimiento]
+      [cliente.id, nombre, telefono, rutNormalizado, direccion, subtotal, descuentoPct, descuentoMonto, total, codigoSeguimiento]
     );
     const pedidoId = result.insertId;
 
