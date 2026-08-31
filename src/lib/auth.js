@@ -44,3 +44,58 @@ export function estaAutorizado(request) {
     return false;
   }
 }
+
+/** Respuesta JSON estándar 401 para endpoints del panel proveedor. */
+export function respuestaNoAutorizada() {
+  return new Response(JSON.stringify({ error: 'No autorizado' }), {
+    status: 401,
+    headers: {
+      'Content-Type': 'application/json',
+      'WWW-Authenticate': 'Basic realm="Panel proveedor"',
+    },
+  });
+}
+
+/* ============================
+   SESIÓN DE CLIENTES (JWT + cookie httpOnly)
+   ============================ */
+
+function obtenerSecretKey() {
+  const secret = import.meta.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('JWT_SECRET debe estar configurado y tener al menos 32 caracteres.');
+  }
+  return new TextEncoder().encode(secret);
+}
+
+export const SESSION_COOKIE_NAME = 'sesion_cliente';
+
+/** Crea un JWT firmado con los datos básicos del cliente. */
+export async function crearSesion(cliente) {
+  return await new SignJWT({ id: cliente.id, rut: cliente.rut, nombre: cliente.nombre })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('7d')
+    .sign(obtenerSecretKey());
+}
+
+/** Verifica un JWT de sesión de cliente. Devuelve el payload o null si es inválido/expiró. */
+export async function verificarSesion(token) {
+  try {
+    const { payload } = await jwtVerify(token, obtenerSecretKey());
+    return payload; // { id, rut, nombre, iat, exp }
+  } catch {
+    return null;
+  }
+}
+
+/** Opciones estándar para la cookie de sesión de cliente. */
+export function opcionesCookieSesion() {
+  return {
+    httpOnly: true,
+    secure: import.meta.env.PROD,
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 60 * 24 * 7, // 7 días
+  };
+}

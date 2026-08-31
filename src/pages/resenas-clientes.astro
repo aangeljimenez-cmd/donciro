@@ -1,0 +1,135 @@
+---
+import MainLayout from "../layouts/MainLayout.astro";
+import Navbar from "../components/Navbar.astro";
+import Footer from "../components/Footer.astro";
+import { obtenerResumenAtencion, obtenerResenasAtencionAprobadas } from "../lib/resenas.js";
+
+export const prerender = false;
+
+const resumen = await obtenerResumenAtencion();
+const resenas = await obtenerResenasAtencionAprobadas(500);
+
+function formatearFecha(fecha) {
+  return new Date(fecha).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+---
+<MainLayout title="Reseñas de nuestros clientes">
+
+<Navbar />
+
+<section class="cabecera">
+  <h1>Reseñas de nuestros clientes</h1>
+  {resumen.total > 0 ? (
+    <p class="cabecera__resumen">⭐ {resumen.promedio} de 5 · {resumen.total} {resumen.total === 1 ? 'reseña' : 'reseñas'}</p>
+  ) : (
+    <p class="cabecera__resumen">Todavía no tenemos reseñas publicadas.</p>
+  )}
+  <a href="/nosotros" class="cabecera__volver">← Volver a Nosotros</a>
+</section>
+
+<section class="lista-resenas">
+  {resenas.length === 0 ? (
+    <p class="lista-resenas__vacio">¡Sé el primero en dejar tu opinión después de tu compra! Puedes calificar la atención recibida desde <a href="/mis-pedidos">Mis pedidos</a>.</p>
+  ) : (
+    <div class="lista-resenas__grid">
+      {resenas.map((r) => (
+        <div class="testimonio">
+          <span class="testimonio__estrellas">{'★'.repeat(r.calificacion)}{'☆'.repeat(5 - r.calificacion)}</span>
+          {r.comentario && <p class="testimonio__comentario">"{r.comentario}"</p>}
+          <p class="testimonio__autor">{r.cliente} · {formatearFecha(r.created_at)}</p>
+        </div>
+      ))}
+    </div>
+  )}
+</section>
+
+<Footer />
+
+</MainLayout>
+
+<style>
+.cabecera {
+  text-align: center;
+  padding: 70px 20px 30px;
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.cabecera h1 {
+  font-size: clamp(1.8rem, 6vw, 3rem);
+  color: var(--azul-dark);
+  margin-bottom: 12px;
+}
+
+.cabecera__resumen {
+  font-size: 1.1rem;
+  color: #555;
+  margin-bottom: 18px;
+}
+
+.cabecera__volver {
+  display: inline-block;
+  color: var(--azul, #2874a6);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.cabecera__volver:hover {
+  text-decoration: underline;
+}
+
+.lista-resenas {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 10px 20px 90px;
+}
+
+.lista-resenas__vacio {
+  text-align: center;
+  color: #666;
+  font-size: 1rem;
+}
+
+.lista-resenas__vacio a {
+  color: var(--azul, #2874a6);
+  font-weight: 600;
+}
+
+.lista-resenas__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+}
+
+.testimonio {
+  background: var(--crema);
+  border: 1px solid var(--azul-linea);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  transition: 0.3s;
+}
+
+.testimonio:hover {
+  transform: translateY(-6px);
+}
+
+.testimonio__estrellas {
+  color: #d9a441;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+}
+
+.testimonio__comentario {
+  margin: 12px 0;
+  font-style: italic;
+  color: var(--ink, #333);
+}
+
+.testimonio__autor {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  margin: 0;
+}
+</style>

@@ -12,7 +12,7 @@ const [[{ total: totalClientes }]] = await pool.query('SELECT COUNT(*) AS total 
 const clientesFelices = BASE_CLIENTES_FELICES + Number(totalClientes);
 
 const resumenAtencion = await obtenerResumenAtencion();
-const testimonios = await obtenerResenasAtencionAprobadas(6);
+const testimonios = await obtenerResenasAtencionAprobadas(3);
 
 function formatearFechaTestimonio(fecha) {
   return new Date(fecha).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -152,6 +152,10 @@ Ser reconocidos como una empresa líder por la calidad de nuestros productos y e
       </div>
     ))}
   </div>
+)}
+
+{resumenAtencion.total > testimonios.length && (
+  <a href="/resenas-clientes" class="testimonios__ver-todas">Ver todas las reseñas ({resumenAtencion.total})</a>
 )}
 
 <p class="testimonios__nota">
@@ -412,6 +416,23 @@ font-size:2rem;
   font-weight: 600;
   color: #666;
   margin: 0;
+}
+
+.testimonios__ver-todas {
+  display: inline-block;
+  margin-top: 30px;
+  background: linear-gradient(135deg, var(--azul), var(--azul-acento));
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 12px 26px;
+  border-radius: 999px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  transition: transform 0.2s;
+}
+
+.testimonios__ver-todas:hover {
+  transform: translateY(-3px);
 }
 
 .testimonios__nota {
