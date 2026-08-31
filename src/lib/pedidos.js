@@ -22,7 +22,7 @@ export async function buscarClientePorRut(rut) {
   return rows.length > 0 ? rows[0] : null;
 }
 
-export async function crearPedido({ nombre, telefono, direccion, rut, email, items }) {
+export async function crearPedido({ nombre, telefono, direccion, rut, email, lat, lng, items }) {
   if (
     typeof nombre !== 'string' || typeof telefono !== 'string' || typeof direccion !== 'string' ||
     !nombre.trim() || !telefono.trim() || !direccion.trim() ||
@@ -42,6 +42,21 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
   }
   if (email !== undefined && email !== null && (typeof email !== 'string' || email.length > 254)) {
     throw new Error('El email ingresado no es válido.');
+  }
+
+  // La ubicación del mapa es opcional: solo llega cuando el cliente marcó un punto
+  // en el mapa interactivo del carrito. Si llega, debe ser un par de coordenadas válidas.
+  let latValidada = null;
+  let lngValidada = null;
+  if (lat !== undefined && lat !== null && lng !== undefined && lng !== null) {
+    latValidada = Number(lat);
+    lngValidada = Number(lng);
+    if (
+      !Number.isFinite(latValidada) || !Number.isFinite(lngValidada) ||
+      latValidada < -90 || latValidada > 90 || lngValidada < -180 || lngValidada > 180
+    ) {
+      throw new Error('La ubicación marcada en el mapa no es válida.');
+    }
   }
 
   const conn = await pool.getConnection();
@@ -135,9 +150,9 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
 
     const [result] = await conn.query(
       `INSERT INTO pedidos
-        (cliente_id, nombre, cliente_telefono, rut, direccion_entrega, subtotal, descuento_pct, descuento_monto, total, estado, codigo_seguimiento)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
-      [cliente.id, nombre, telefono, rutNormalizado, direccion, subtotal, descuentoPct, descuentoMonto, total, codigoSeguimiento]
+        (cliente_id, nombre, cliente_telefono, rut, direccion_entrega, lat, lng, subtotal, descuento_pct, descuento_monto, total, estado, codigo_seguimiento)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pendiente', ?)`,
+      [cliente.id, nombre, telefono, rutNormalizado, direccion, latValidada, lngValidada, subtotal, descuentoPct, descuentoMonto, total, codigoSeguimiento]
     );
     const pedidoId = result.insertId;
 
@@ -158,6 +173,8 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
       nombre,
       telefono,
       direccion,
+      lat: latValidada,
+      lng: lngValidada,
       items: itemsProcesados,
       subtotal,
       descuentoPct,
@@ -175,7 +192,7 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
 
 export async function listarPedidos() {
   const [rows] = await pool.query(
-    `SELECT id, nombre, cliente_telefono AS telefono, rut, direccion_entrega AS direccion,
+    `SELECT id, nombre, cliente_telefono AS telefono, rut, direccion_entrega AS direccion, lat, lng,
             subtotal, descuento_pct, descuento_monto, total, estado, created_at
      FROM pedidos
      ORDER BY created_at DESC`
@@ -305,7 +322,7 @@ export async function obtenerPedidoPorCodigo(codigo) {
   if (!codigo || typeof codigo !== 'string') return null;
 
   const [rows] = await pool.query(
-    `SELECT id, nombre, cliente_telefono AS telefono, direccion_entrega AS direccion,
+    `SELECT id, nombre, cliente_telefono AS telefono, direccion_entrega AS direccion, lat, lng,
             subtotal, descuento_pct, descuento_monto, total, estado, created_at,
             codigo_seguimiento AS codigo
      FROM pedidos
