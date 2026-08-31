@@ -25,6 +25,13 @@ export async function POST({ request }) {
     const mensaje = err instanceof SyntaxError
       ? 'La solicitud no contiene JSON válido.'
       : esErrorDeCliente ? err.message : 'No se pudo procesar la compra. Inténtalo nuevamente.';
+
+    // Si no es un error "esperado" de validación, lo dejamos en el log del
+    // servidor para poder diagnosticarlo (antes se perdía por completo).
+    if (!esErrorDeCliente && !(err instanceof SyntaxError)) {
+      console.error('Error inesperado en checkout:', err);
+    }
+
     return new Response(JSON.stringify({ error: mensaje }), {
       status: err instanceof SyntaxError ? 400 : esErrorDeCliente ? 422 : 500,
       headers: { 'Content-Type': 'application/json' },
