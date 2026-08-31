@@ -8,8 +8,10 @@ export async function calcularDescuento(clienteId, totalCompra) {
   const [[config2]] = await pool.query(
     "SELECT valor FROM configuracion WHERE clave = 'descuento_mayorista'"
   );
-  const montoMinimo = Number(config1.valor);
-  const descuentoMayorista = Number(config2.valor);
+  // Si faltan estas filas en la tabla `configuracion`, no debe romper la compra:
+  // simplemente no habrá descuento mayorista.
+  const montoMinimo = config1 ? Number(config1.valor) : 0;
+  const descuentoMayorista = config2 ? Number(config2.valor) : 0;
 
   let descuentoIndividual = 0;
   if (clienteId) {
