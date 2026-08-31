@@ -1,6 +1,5 @@
-// src/pages/api/pedidos/[id]/items.js
-import { obtenerItemsPedido } from '../../../lib/pedidos.js';
-import { estaAutorizado, respuestaNoAutorizada } from '../../../lib/auth.js';
+import { obtenerItemsPedido } from '../../../../lib/pedidos.js';
+import { estaAutorizado, respuestaNoAutorizada } from '../../../../lib/auth.js';
 
 export const prerender = false;
 
@@ -17,7 +16,6 @@ export async function GET({ params, request }) {
 
   const items = await obtenerItemsPedido(pedidoId);
   return new Response(JSON.stringify({ items }), {
-    status: 200,
     headers: { 'Content-Type': 'application/json' },
   });
 }

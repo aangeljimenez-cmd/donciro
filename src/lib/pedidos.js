@@ -2,7 +2,7 @@
 import crypto from 'node:crypto';
 import { pool } from './db.js';
 import { calcularDescuento } from './descuentos.js';
-import { normalizarRut, formatoRutValido } from './rut.js';
+import { normalizarRut, formatoRutValido, digitoVerificadorValido } from './rut.js';
 
 /**
  * Genera un código de seguimiento aleatorio y no adivinable (160 bits de entropía).
@@ -23,18 +23,25 @@ export async function buscarClientePorRut(rut) {
 }
 
 export async function crearPedido({ nombre, telefono, direccion, rut, email, items }) {
-  if (!nombre || !telefono || !direccion) {
+  if (
+    typeof nombre !== 'string' || typeof telefono !== 'string' || typeof direccion !== 'string' ||
+    !nombre.trim() || !telefono.trim() || !direccion.trim() ||
+    nombre.trim().length > 120 || telefono.trim().length > 30 || direccion.trim().length > 300
+  ) {
     throw new Error('Faltan datos del cliente (nombre, teléfono o dirección).');
   }
   if (!rut || !rut.trim()) {
     throw new Error('El RUT es obligatorio.');
   }
   const rutNormalizado = normalizarRut(rut);
-  if (!formatoRutValido(rutNormalizado)) {
+  if (!formatoRutValido(rutNormalizado) || !digitoVerificadorValido(rutNormalizado)) {
     throw new Error('El RUT ingresado no es válido.');
   }
-  if (!Array.isArray(items) || items.length === 0) {
+  if (!Array.isArray(items) || items.length === 0 || items.length > 50) {
     throw new Error('El carrito está vacío.');
+  }
+  if (email !== undefined && email !== null && (typeof email !== 'string' || email.length > 254)) {
+    throw new Error('El email ingresado no es válido.');
   }
 
   const conn = await pool.getConnection();
@@ -54,14 +61,24 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
 
     let subtotal = 0;
     const itemsProcesados = [];
+    const productosIncluidos = new Set();
 
     for (const item of items) {
+      const productoId = Number(item?.id);
+      const cantidad = Number(item?.cantidad);
+      if (!Number.isInteger(productoId) || productoId <= 0 || !Number.isFinite(cantidad) || cantidad <= 0) {
+        throw new Error('El carrito contiene un producto o cantidad inválidos.');
+      }
+      if (productosIncluidos.has(productoId)) {
+        throw new Error('El carrito contiene productos duplicados.');
+      }
+      productosIncluidos.add(productoId);
       const [rows] = await conn.query(
         `SELECT p.id, p.name, p.precio, p.stock, p.cantidad_minima, p.disponible, u.name AS unidad
          FROM productos p
          JOIN unidad_medida u ON p.id_umedida = u.id
          WHERE p.id = ? FOR UPDATE`,
-        [item.id]
+        [productoId]
       );
       if (rows.length === 0) {
         throw new Error(`Producto ${item.id} no existe`);
@@ -79,29 +96,32 @@ export async function crearPedido({ nombre, telefono, direccion, rut, email, ite
       // Los productos que se venden por unidad nunca pueden pedirse en cantidades
       // fraccionarias (ej. "0.5 un." de vinagre). Se valida también en el servidor
       // por si el front-end llega a enviar un valor decimal.
-      if (!esPeso && !Number.isInteger(Number(item.cantidad))) {
+      if (!esPeso && !Number.isInteger(cantidad)) {
         throw new Error(`"${producto.name}" se vende por unidad; la cantidad debe ser un número entero`);
       }
 
-      if (Number(item.cantidad) < Number(producto.cantidad_minima)) {
+      if (cantidad < Number(producto.cantidad_minima)) {
         const mensajeMinimo = esPeso
           ? `${Number(producto.cantidad_minima) * 1000} ${producto.unidad === 'kg' ? 'gr' : 'ml'}`
           : `${Number(producto.cantidad_minima)} unidades`;
         throw new Error(`"${producto.name}" tiene una compra mínima de ${mensajeMinimo}`);
       }
 
-      const tolerancia = esPeso ? 0.05 : 0;
-      if (producto.stock < Number(item.cantidad) - tolerancia) {
+      if (Number(producto.stock) < cantidad) {
         throw new Error(`Stock insuficiente para "${producto.name}"`);
       }
 
-      const subtotalItem = Number(producto.precio) * Number(item.cantidad);
+      const subtotalItem = Number(producto.precio) * cantidad;
       subtotal += subtotalItem;
+
+      // Reservamos el stock ahora, dentro de la misma transacción del pedido.
+      // El pesaje posterior sólo ajustará la diferencia respecto a esta cantidad.
+      await conn.query('UPDATE productos SET stock = stock - ? WHERE id = ?', [cantidad, producto.id]);
 
       itemsProcesados.push({
         producto_id: producto.id,
         producto_nombre: producto.name,
-        cantidad: item.cantidad,
+        cantidad,
         unidad: producto.unidad,
         precio_unitario: producto.precio,
         subtotal: subtotalItem,
@@ -193,13 +213,19 @@ export async function registrarCantidadesReales(items) {
     let pedidoId = null;
 
     for (const { pedido_item_id, cantidad_real } of items) {
+      const itemId = Number(pedido_item_id);
+      const cantidadReal = Number(cantidad_real);
+      if (!Number.isInteger(itemId) || itemId <= 0 || !Number.isFinite(cantidadReal)) {
+        throw new Error('Los datos de pesaje no son válidos');
+      }
       const [itemRows] = await conn.query(
-        `SELECT pi.id, pi.pedido_id, pi.producto_id, pi.cantidad_real, pi.precio_unitario,
-                p.estado
+        `SELECT pi.id, pi.pedido_id, pi.producto_id, pi.cantidad, pi.cantidad_real, pi.precio_unitario,
+                p.estado, pr.stock
          FROM pedido_items pi
          JOIN pedidos p ON p.id = pi.pedido_id
+         JOIN productos pr ON pr.id = pi.producto_id
          WHERE pi.id = ? FOR UPDATE`,
-        [pedido_item_id]
+        [itemId]
       );
       if (itemRows.length === 0) {
         throw new Error(`Item de pedido ${pedido_item_id} no encontrado`);
@@ -209,23 +235,31 @@ export async function registrarCantidadesReales(items) {
       if (item.estado === 'entregado') {
         throw new Error('No se puede editar el pesaje de un pedido ya entregado');
       }
-      if (Number(cantidad_real) < 0) {
+      if (cantidadReal < 0) {
         throw new Error('La cantidad real no puede ser negativa');
       }
 
+      if (pedidoId !== null && pedidoId !== item.pedido_id) {
+        throw new Error('Todos los items deben pertenecer al mismo pedido');
+      }
       pedidoId = item.pedido_id;
 
-      const cantidadAnterior = item.cantidad_real !== null ? Number(item.cantidad_real) : 0;
-      const diferencia = Number(cantidad_real) - cantidadAnterior;
+      // El stock solicitado ya quedó reservado al confirmar el pedido. Sólo se
+      // descuenta o devuelve la diferencia al corregir el pesaje.
+      const cantidadAnterior = item.cantidad_real !== null ? Number(item.cantidad_real) : Number(item.cantidad);
+      const diferencia = cantidadReal - cantidadAnterior;
+      if (diferencia > 0 && Number(item.stock) < diferencia) {
+        throw new Error('Stock insuficiente para registrar ese pesaje');
+      }
 
       await conn.query('UPDATE productos SET stock = stock - ? WHERE id = ?', [diferencia, item.producto_id]);
 
-      const nuevoSubtotalItem = Number(item.precio_unitario) * Number(cantidad_real);
+      const nuevoSubtotalItem = Number(item.precio_unitario) * cantidadReal;
 
       await conn.query('UPDATE pedido_items SET cantidad_real = ?, subtotal = ? WHERE id = ?', [
-        cantidad_real,
+        cantidadReal,
         nuevoSubtotalItem,
-        pedido_item_id,
+        itemId,
       ]);
     }
 

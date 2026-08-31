@@ -63,13 +63,15 @@ function formatearMonto(monto) {
   .seguimiento-page { max-width: 500px; margin: 0 auto; padding: 2rem 1rem; }
   .estado-badge {
     display: inline-block;
-    background: #eee;
+    background: var(--azul-suave);
+    color: var(--azul-dark);
+    border: 1px solid var(--azul-linea);
     padding: 4px 12px;
     border-radius: 20px;
     font-size: 0.9rem;
     margin-bottom: 1rem;
   }
-  .items-lista { margin: 1rem 0; border-top: 1px dashed #ccc; border-bottom: 1px dashed #ccc; padding: 0.5rem 0; }
+  .items-lista { margin: 1rem 0; border-top: 1px dashed var(--azul-linea); border-bottom: 1px dashed var(--azul-linea); padding: 0.5rem 0; }
   .item-fila { display: flex; justify-content: space-between; padding: 4px 0; }
   .totales p { margin: 4px 0; }
   .total { font-weight: bold; font-size: 1.1rem; }

@@ -1,5 +1,6 @@
 // src/lib/auth.js
 import { SignJWT, jwtVerify } from 'jose';
+import { timingSafeEqual } from 'node:crypto';
 
 /* ============================
    AUTH PANEL PROVEEDOR (Basic Auth)
@@ -11,11 +12,18 @@ export function estaAutorizado(request) {
   const usuarioValido = import.meta.env.PROVEEDOR_USER;
   const claveValida = import.meta.env.PROVEEDOR_PASS;
 
-  if (!header || !header.startsWith('Basic ')) return false;
+  if (!header || !header.startsWith('Basic ') || !usuarioValido || !claveValida) return false;
 
-  const decoded = Buffer.from(header.slice(6), 'base64').toString('utf-8');
-  const [usuario, clave] = decoded.split(':');
-  return usuario === usuarioValido && clave === claveValida;
+  try {
+    const decoded = Buffer.from(header.slice(6), 'base64').toString('utf-8');
+    const separator = decoded.indexOf(':');
+    if (separator === -1) return false;
+    const recibido = Buffer.from(`${decoded.slice(0, separator)}:${decoded.slice(separator + 1)}`);
+    const esperado = Buffer.from(`${usuarioValido}:${claveValida}`);
+    return recibido.length === esperado.length && timingSafeEqual(recibido, esperado);
+  } catch {
+    return false;
+  }
 }
 
 /** Respuesta JSON estándar 401 para endpoints del panel proveedor. */
@@ -33,9 +41,13 @@ export function respuestaNoAutorizada() {
    SESIÓN DE CLIENTES (JWT + cookie httpOnly)
    ============================ */
 
-const secretKey = new TextEncoder().encode(
-  import.meta.env.JWT_SECRET || 'cambia-esto-por-una-clave-larga-y-secreta'
-);
+function obtenerSecretKey() {
+  const secret = import.meta.env.JWT_SECRET;
+  if (!secret || secret.length < 32) {
+    throw new Error('JWT_SECRET debe estar configurado y tener al menos 32 caracteres.');
+  }
+  return new TextEncoder().encode(secret);
+}
 
 export const SESSION_COOKIE_NAME = 'sesion_cliente';
 
@@ -45,13 +57,13 @@ export async function crearSesion(cliente) {
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
-    .sign(secretKey);
+    .sign(obtenerSecretKey());
 }
 
 /** Verifica un JWT de sesión de cliente. Devuelve el payload o null si es inválido/expiró. */
 export async function verificarSesion(token) {
   try {
-    const { payload } = await jwtVerify(token, secretKey);
+    const { payload } = await jwtVerify(token, obtenerSecretKey());
     return payload; // { id, rut, nombre, iat, exp }
   } catch {
     return null;

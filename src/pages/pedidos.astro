@@ -221,8 +221,8 @@ function formatearMonto(monto) {
 .btn-filtrar {
   padding: 10px 16px;
   border-radius: 8px;
-  border: 1px solid #30af25;
-  background: #30af25;
+  border: 1px solid var(--azul);
+  background: var(--azul);
   color: #fff;
   cursor: pointer;
   font-size: 0.9rem;
@@ -239,17 +239,17 @@ function formatearMonto(monto) {
 }
 .btn-limpiar-filtros:hover { background: #f4f7fb; }
 .sin-pedidos { text-align: center; color: #888; padding: 30px; }
-.ruta-entrega { background: #fff9d6; border: 1px solid #e6d47a; border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; }
+.ruta-entrega { background: var(--azul-suave); border: 1px solid var(--azul-linea); border-radius: 10px; padding: 16px 20px; margin-bottom: 24px; }
 .ruta-entrega ol { margin: 10px 0 0 20px; }
 .pedidos-lista { display: flex; flex-direction: column; gap: 16px; }
 .pedido-card { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 16px 20px; }
 .pedido-card__header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .pedido-card__id { font-weight: bold; }
 .pedido-card__estado { padding: 2px 10px; border-radius: 20px; font-size: 0.85rem; text-transform: capitalize; background: #eee; }
-.pedido-card__estado--pendiente { background: #ffe0b2; }
-.pedido-card__estado--en_preparacion { background: #fff9c4; }
-.pedido-card__estado--en_ruta { background: #bbdefb; }
-.pedido-card__estado--entregado { background: #c8e6c9; }
+.pedido-card__estado--pendiente { background: #DCECF9; }
+.pedido-card__estado--en_preparacion { background: #C7E0F4; }
+.pedido-card__estado--en_ruta { background: #9DCAE9; }
+.pedido-card__estado--entregado { background: #B8DDF4; }
 .pedido-card__items { margin: 10px 0; padding: 10px 0; border-top: 1px dashed #ddd; border-bottom: 1px dashed #ddd; }
 .item-pesaje { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; flex-wrap: wrap; }
 .pesaje-input { display: flex; align-items: center; gap: 6px; }
@@ -259,4 +259,6 @@ function formatearMonto(monto) {
 .pedido-card__acciones { display: flex; gap: 8px; margin-top: 10px; }
 .btn-estado { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 6px; background: #f5f5f5; cursor: pointer; }
 .btn-estado:hover { background: #e8e8e8; }
+
+.btn-filtrar { border-color: var(--azul); background: var(--azul); }
 </style>

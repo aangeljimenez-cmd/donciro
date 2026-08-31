@@ -51,8 +51,8 @@ const { titulo, descripcion, imagen, enlace } = Astro.props;
 }
 
 .btn{
-    background:#FFD600;
-    color:#222;
+    background:var(--azul);
+    color:var(--crema);
 }
 
 .btn:hover{
@@ -61,7 +61,7 @@ const { titulo, descripcion, imagen, enlace } = Astro.props;
 
 .btn-secundario{
     background:white;
-    color:#2E7D32;
+    color:var(--azul);
 }
 
 .btn-secundario:hover{
@@ -82,8 +82,9 @@ const { titulo, descripcion, imagen, enlace } = Astro.props;
 
 .card{
     text-decoration:none;
-    color:#222;
-    background:white;
+    color:var(--ink);
+    background:var(--crema);
+    border:1px solid var(--azul-linea);
     border-radius:20px;
     padding:30px;
     box-shadow:0 10px 25px rgba(0,0,0,.15);
@@ -92,16 +93,16 @@ const { titulo, descripcion, imagen, enlace } = Astro.props;
 
 .card:hover{
     transform:translateY(-10px) scale(1.05);
-    background:#FFFDE7;
+    background:var(--azul-suave);
 }
 
 .card h3{
-    color:#2E7D32;
+    color:var(--azul);
     font-size:1.6rem;
 }
 
 .beneficios{
-    background:#F1F8E9;
+    background:var(--azul-suave);
     padding:70px 20px;
     text-align:center;
 }
@@ -114,7 +115,8 @@ const { titulo, descripcion, imagen, enlace } = Astro.props;
 }
 
 .beneficios-grid div{
-    background:white;
+    background:var(--crema);
+    border:1px solid var(--azul-linea);
     border-radius:20px;
     padding:30px;
     transition:.3s;
