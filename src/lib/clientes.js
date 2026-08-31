@@ -1,7 +1,7 @@
 // src/lib/clientes.js
 import { pool } from './db.js';
 import bcrypt from 'bcryptjs';
-import { normalizarRut, formatoRutValido } from './rut.js';
+import { normalizarRut, formatoRutValido, digitoVerificadorValido } from './rut.js';
 
 /**
  * Registra un cliente nuevo con contraseña, o completa el registro de un cliente
@@ -10,8 +10,12 @@ import { normalizarRut, formatoRutValido } from './rut.js';
  */
 export async function registrarCliente({ nombre, rut, password, telefono }) {
   const rutNormalizado = normalizarRut(rut);
-  if (!formatoRutValido(rutNormalizado)) {
+  if (!formatoRutValido(rutNormalizado) || !digitoVerificadorValido(rutNormalizado)) {
     throw new Error('El RUT ingresado no es válido');
+  }
+
+  if (typeof telefono !== 'string' || !/^\d{9}$/.test(telefono)) {
+    throw new Error('El teléfono debe tener exactamente 9 dígitos.');
   }
 
   const [rows] = await pool.query('SELECT id, password_hash FROM clientes WHERE rut = ?', [rutNormalizado]);
@@ -45,14 +49,14 @@ export async function registrarCliente({ nombre, rut, password, telefono }) {
 export async function buscarClienteParaRegistro(rut) {
   const rutNormalizado = normalizarRut(rut);
   const [rows] = await pool.query(
-    'SELECT id, nombre, password_hash FROM clientes WHERE rut = ?',
+    'SELECT id, password_hash FROM clientes WHERE rut = ?',
     [rutNormalizado]
   );
   if (rows.length === 0) {
     return { existe: false, tieneCuenta: false };
   }
   const cliente = rows[0];
-  return { existe: true, tieneCuenta: !!cliente.password_hash, nombre: cliente.nombre };
+  return { existe: true, tieneCuenta: !!cliente.password_hash };
 }
 
 /** Verifica rut + contraseña. Lanza error si no coincide. */

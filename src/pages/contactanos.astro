@@ -57,7 +57,7 @@ import Footer from "../components/Footer.astro";
 
 <h2 class="frase">
   🧀 ¡Síguenos y descubre nuestras mejores ofertas, promociones y productos
-  frescos todos los días! 🥛
+  frescos todos los días! 
 </h2>
 
 <Footer />
@@ -67,12 +67,12 @@ import Footer from "../components/Footer.astro";
     min-height: 80vh;
     padding: 60px 20px;
     text-align: center;
-    background: linear-gradient(135deg, #fff9d6, #d9f7be);
+    background: linear-gradient(135deg, #EDF6F5, #D9EBF0);
   }
 
   .contacto h1 {
     font-size: clamp(1.8rem, 7vw, 3rem);
-    color: #2e7d32;
+    color: var(--azul-dark);
     margin-bottom: 10px;
   }
 
@@ -120,11 +120,11 @@ import Footer from "../components/Footer.astro";
   }
 
   .whatsapp {
-    background: linear-gradient(135deg, #25d366, #128c7e);
+    background: linear-gradient(135deg, #25D366, #128C7E);
   }
 
   .instagram {
-    background: linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045);
+    background: linear-gradient(135deg, #833AB4, #C13584, #F56040, #FCAF45);
   }
 
   .facebook {
@@ -132,7 +132,7 @@ import Footer from "../components/Footer.astro";
   }
 
   .gmail {
-    background: linear-gradient(135deg, #ea4335, #ff7043);
+    background: linear-gradient(135deg, #EA4335, #B31412);
   }
 
   @keyframes flotar {
@@ -171,7 +171,7 @@ import Footer from "../components/Footer.astro";
   .contacto h1 {
     font-size: clamp(1.8rem, 7vw, 4rem);
     font-weight: bold;
-    background: linear-gradient(90deg, #2e7d32, #ffd600, #43a047);
+    background: linear-gradient(90deg, var(--azul-dark), var(--azul-acento), var(--oro));
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     animation: titulo 4s linear infinite;
@@ -187,7 +187,7 @@ import Footer from "../components/Footer.astro";
   }
 
   .frase {
-    color: #2e7d32;
+    color: var(--azul-dark);
     font-size: clamp(1.1rem, 4vw, 1.5rem);
     margin: 40px auto;
     padding: 0 20px;
@@ -202,8 +202,8 @@ import Footer from "../components/Footer.astro";
 
   .contacto {
     background:
-      radial-gradient(circle at top left, #ffe95b 0%, transparent 30%),
-      radial-gradient(circle at bottom right, #66bb6a 0%, transparent 35%),
-      linear-gradient(135deg, #fffbe6, #e8f5e9);
+      radial-gradient(circle at top left, #A8DAD5 0%, transparent 30%),
+      radial-gradient(circle at bottom right, #E7C4A1 0%, transparent 35%),
+      linear-gradient(135deg, #F7FAF9, #E5F0F1);
   }
 </style>

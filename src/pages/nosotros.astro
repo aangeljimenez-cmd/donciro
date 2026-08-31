@@ -2,8 +2,21 @@
 import MainLayout from "../layouts/MainLayout.astro";
 import Navbar from "../components/Navbar.astro";
 import Footer from "../components/Footer.astro";
+import { pool } from "../lib/db.js";
+import { obtenerResumenAtencion, obtenerResenasAtencionAprobadas } from "../lib/resenas.js";
 
+export const prerender = false;
 
+const BASE_CLIENTES_FELICES = 28670;
+const [[{ total: totalClientes }]] = await pool.query('SELECT COUNT(*) AS total FROM clientes');
+const clientesFelices = BASE_CLIENTES_FELICES + Number(totalClientes);
+
+const resumenAtencion = await obtenerResumenAtencion();
+const testimonios = await obtenerResenasAtencionAprobadas(6);
+
+function formatearFechaTestimonio(fecha) {
+  return new Date(fecha).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' });
+}
 ---
 
 <MainLayout title="Nosotros">
@@ -100,12 +113,12 @@ Ser reconocidos como una empresa líder por la calidad de nuestros productos y e
 <section class="estadisticas">
 
 <div class="numero">
-<h2>+28670</h2>
+<h2>+{clientesFelices.toLocaleString('es-CL')}</h2>
 <p>Clientes felices</p>
 </div>
 
 <div class="numero">
-<h2>+100</h2>
+<h2>+130</h2>
 <p>Productos</p>
 </div>
 
@@ -113,6 +126,37 @@ Ser reconocidos como una empresa líder por la calidad de nuestros productos y e
 <h2>100%</h2>
 <p>Calidad</p>
 </div>
+
+{resumenAtencion.total > 0 && (
+  <div class="numero">
+    <h2>⭐ {resumenAtencion.promedio}</h2>
+    <p>Satisfacción ({resumenAtencion.total} opiniones)</p>
+  </div>
+)}
+
+</section>
+
+<section class="testimonios">
+
+<h2>Lo que dicen nuestros clientes</h2>
+
+{testimonios.length === 0 ? (
+  <p class="testimonios__vacio">Todavía no tenemos reseñas publicadas. ¡Sé el primero en dejar tu opinión después de tu compra!</p>
+) : (
+  <div class="testimonios__grid">
+    {testimonios.map((t) => (
+      <div class="testimonio">
+        <span class="testimonio__estrellas">{'★'.repeat(t.calificacion)}{'☆'.repeat(5 - t.calificacion)}</span>
+        {t.comentario && <p class="testimonio__comentario">"{t.comentario}"</p>}
+        <p class="testimonio__autor">{t.cliente} · {formatearFechaTestimonio(t.created_at)}</p>
+      </div>
+    ))}
+  </div>
+)}
+
+<p class="testimonios__nota">
+  ¿Ya compraste con nosotros? Puedes calificar tus productos desde <a href="/producto">Productos</a> y la atención recibida desde <a href="/mis-pedidos">Mis pedidos</a>.
+</p>
 
 </section>
 
@@ -131,14 +175,14 @@ Ser reconocidos como una empresa líder por la calidad de nuestros productos y e
     inset:0;
     z-index:-1;
     overflow:hidden;
-    background:linear-gradient(135deg,#fff9d8,#dff7d3);
+    background:linear-gradient(135deg,#EAF4F3,#D5E7ED);
 }
 
 .background span{
     position:absolute;
     bottom:-150px;
     border-radius:50%;
-    background:rgba(76,175,80,.18);
+    background:rgba(42,161,152,.15);
     animation:subir 20s linear infinite;
 }
 
@@ -173,7 +217,12 @@ text-align:center;
 .hero h1{
 
 font-size:clamp(1.8rem, 6vw, 4rem);
-color:#fdf900;
+color:var(--crema);
+background:linear-gradient(135deg, var(--azul-dark), var(--azul));
+display:inline-block;
+padding:0.22em 0.7em 0.3em;
+border-radius:0.22em;
+box-shadow:0 12px 28px rgba(8,43,74,.24);
 margin-bottom:20px;
 
 }
@@ -194,7 +243,8 @@ padding:30px;
 
 .card{
 
-background:white;
+background:var(--crema);
+border:1px solid var(--azul-linea);
 padding:35px;
 border-radius:25px;
 box-shadow:0 15px 40px rgba(0,0,0,.15);
@@ -242,7 +292,8 @@ margin-top:40px;
 
 .valor{
 
-background:white;
+background:var(--crema);
+border:1px solid var(--azul-linea);
 padding:35px;
 border-radius:20px;
 font-size:clamp(32px, 8vw, 55px);
@@ -274,7 +325,7 @@ padding:80px 20px;
 
 .numero{
 
-background:#2e7d32;
+background:linear-gradient(135deg, var(--azul), var(--azul-acento));
 color:white;
 padding:30px;
 width:220px;
@@ -304,6 +355,79 @@ font-size:2rem;
   .misionVision {
     padding: 20px;
   }
+}
+
+.testimonios {
+  padding: 60px 20px 90px;
+  text-align: center;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.testimonios h2 {
+  font-size: clamp(1.5rem, 5vw, 2.2rem);
+  color: var(--azul-dark);
+  margin-bottom: 30px;
+}
+
+.testimonios__vacio {
+  color: #666;
+  font-size: 1rem;
+}
+
+.testimonios__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 24px;
+  text-align: left;
+}
+
+.testimonio {
+  background: var(--crema);
+  border: 1px solid var(--azul-linea);
+  border-radius: 20px;
+  padding: 24px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+  transition: 0.3s;
+}
+
+.testimonio:hover {
+  transform: translateY(-6px);
+}
+
+.testimonio__estrellas {
+  color: #d9a441;
+  font-size: 1.1rem;
+  letter-spacing: 2px;
+}
+
+.testimonio__comentario {
+  margin: 12px 0;
+  font-style: italic;
+  color: var(--ink, #333);
+}
+
+.testimonio__autor {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #666;
+  margin: 0;
+}
+
+.testimonios__nota {
+  margin-top: 40px;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.testimonios__nota a {
+  color: var(--azul, #2874a6);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.testimonios__nota a:hover {
+  text-decoration: underline;
 }
 
 </style>

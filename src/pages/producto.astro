@@ -4,6 +4,9 @@ import Navbar from "../components/Navbar.astro";
 import Footer from "../components/Footer.astro";
 import Card from "../components/Card.astro";
 import { pool } from "../lib/db.js";
+import { obtenerResumenProductos } from "../lib/resenas.js";
+
+export const prerender = false;
 
 const [productos] = await pool.query(
   `SELECT p.id, p.name, p.precio, p.imagen, p.cantidad_minima,
@@ -14,6 +17,9 @@ const [productos] = await pool.query(
    WHERE p.disponible = 1 AND p.stock > 0
    ORDER BY p.name`
 );
+
+const resumenResenas = await obtenerResumenProductos();
+const clienteLogueado = !!Astro.locals.cliente;
 
 function getGrupo(categoria) {
   const cat = (categoria || "").toLowerCase();
@@ -85,6 +91,35 @@ function minUnidad(cantidadMinima) {
             <button class="btn-comprar" data-id={p.id} data-unidad={p.unidad}>Comprar</button>
           </div>
         )}
+
+        <div class="resenas-producto" data-id={p.id}>
+          <button type="button" class="resenas-producto__toggle">
+            {resumenResenas[p.id]
+              ? <>⭐ {resumenResenas[p.id].promedio} <span class="resenas-producto__total">({resumenResenas[p.id].total})</span></>
+              : <span class="resenas-producto__total">Sin reseñas todavía</span>}
+          </button>
+          <div class="resenas-producto__panel" hidden>
+            <div class="resenas-producto__lista"></div>
+
+            {clienteLogueado ? (
+              <form class="form-resena">
+                <p class="form-resena__label">Tu calificación:</p>
+                <div class="form-resena__estrellas" data-valor="0">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <button type="button" class="estrella-input" data-valor={n} aria-label={`${n} estrellas`}>★</button>
+                  ))}
+                </div>
+                <textarea class="form-resena__comentario" maxlength="600" placeholder="Cuéntanos qué te pareció (opcional)"></textarea>
+                <button type="submit" class="form-resena__enviar">Enviar reseña</button>
+                <p class="form-resena__mensaje" hidden></p>
+              </form>
+            ) : (
+              <p class="resenas-producto__login">
+                <a href="/mis-pedidos">Inicia sesión</a> para dejar tu calificación.
+              </p>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   ))}
@@ -154,6 +189,116 @@ function minUnidad(cantidadMinima) {
       }, 1000);
     }
   });
+
+  // --- Reseñas y calificaciones de productos ---
+  function formatearFechaResena(fecha) {
+    return new Date(fecha).toLocaleDateString("es-CL", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+
+  function pintarEstrellas(n) {
+    return "★".repeat(n) + "☆".repeat(5 - n);
+  }
+
+  async function cargarResenas(contenedor, productoId) {
+    const lista = contenedor.querySelector(".resenas-producto__lista");
+    lista.innerHTML = "Cargando reseñas...";
+    try {
+      const res = await fetch(`/api/resenas/producto?productoId=${productoId}`);
+      const data = await res.json();
+      if (!data.resenas || data.resenas.length === 0) {
+        lista.innerHTML = '<p class="resenas-producto__vacio">Aún no hay reseñas aprobadas para este producto.</p>';
+        return;
+      }
+      lista.innerHTML = data.resenas
+        .map(
+          (r) => `
+            <div class="resena-item">
+              <div class="resena-item__header">
+                <span class="resena-item__estrellas">${pintarEstrellas(r.calificacion)}</span>
+                <span class="resena-item__cliente">${r.cliente}</span>
+              </div>
+              ${r.comentario ? `<p class="resena-item__comentario"></p>` : ""}
+              <span class="resena-item__fecha">${formatearFechaResena(r.created_at)}</span>
+            </div>`
+        )
+        .join("");
+      // Comentarios se insertan como texto (no HTML) para evitar cualquier inyección.
+      lista.querySelectorAll(".resena-item__comentario").forEach((el, i) => {
+        el.textContent = data.resenas[i].comentario;
+      });
+    } catch {
+      lista.innerHTML = '<p class="resenas-producto__vacio">No se pudieron cargar las reseñas.</p>';
+    }
+  }
+
+  document.querySelectorAll(".resenas-producto").forEach((contenedor) => {
+    const productoId = Number(contenedor.dataset.id);
+    const toggle = contenedor.querySelector(".resenas-producto__toggle");
+    const panel = contenedor.querySelector(".resenas-producto__panel");
+    let cargado = false;
+
+    toggle.addEventListener("click", () => {
+      const abierto = !panel.hidden;
+      panel.hidden = abierto;
+      if (!abierto && !cargado) {
+        cargado = true;
+        cargarResenas(contenedor, productoId);
+      }
+    });
+
+    const grupoEstrellas = contenedor.querySelector(".form-resena__estrellas");
+    if (grupoEstrellas) {
+      const botonesEstrella = Array.from(grupoEstrellas.querySelectorAll(".estrella-input"));
+      const pintarSeleccion = (valor) => {
+        botonesEstrella.forEach((b) => b.classList.toggle("estrella-input--activa", Number(b.dataset.valor) <= valor));
+      };
+      botonesEstrella.forEach((boton) => {
+        boton.addEventListener("click", () => {
+          grupoEstrellas.dataset.valor = boton.dataset.valor;
+          pintarSeleccion(Number(boton.dataset.valor));
+        });
+      });
+    }
+
+    const form = contenedor.querySelector(".form-resena");
+    if (form) {
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const mensaje = form.querySelector(".form-resena__mensaje");
+        const calificacion = Number(grupoEstrellas.dataset.valor);
+        const comentario = form.querySelector(".form-resena__comentario").value;
+
+        mensaje.hidden = true;
+        if (!calificacion) {
+          mensaje.textContent = "Selecciona una calificación de 1 a 5 estrellas.";
+          mensaje.hidden = false;
+          return;
+        }
+
+        const boton = form.querySelector(".form-resena__enviar");
+        boton.disabled = true;
+        try {
+          const res = await fetch("/api/resenas/producto", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ productoId, calificacion, comentario }),
+          });
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || "No se pudo enviar la reseña.");
+          mensaje.textContent = "¡Gracias! Tu reseña quedó pendiente de aprobación.";
+          mensaje.hidden = false;
+          form.reset();
+          grupoEstrellas.dataset.valor = "0";
+          grupoEstrellas.querySelectorAll(".estrella-input").forEach((b) => b.classList.remove("estrella-input--activa"));
+        } catch (err) {
+          mensaje.textContent = err.message;
+          mensaje.hidden = false;
+        } finally {
+          boton.disabled = false;
+        }
+      });
+    }
+  });
 </script>
 
 <style>
@@ -164,6 +309,7 @@ max-width:600px;
 padding:18px;
 border-radius:40px;
 border:none;
+border:1px solid var(--azul-linea);
 box-shadow:0 5px 20px rgba(0,0,0,.2);
 font-size:18px;
 margin:40px auto;
@@ -178,7 +324,8 @@ padding:0 20px 60px;
 }
 
 .producto{
-background:white;
+background:var(--crema);
+border:1px solid var(--azul-linea);
 border-radius:25px;
 overflow:hidden;
 box-shadow:0 15px 35px rgba(0,0,0,.15);
@@ -239,7 +386,7 @@ color:var(--text-secondary, #555);
 }
 
 .producto button{
-background:#30af25;
+background:var(--azul);
 color:white;
 border:none;
 padding:15px;
@@ -253,32 +400,161 @@ transition:.3s;
 opacity:.85;
 }
 
-/* Quesos: amarillo */
-.producto--quesos{ background:#f7e2a0; border:2px solid #e6c866; }
-.producto--quesos h3, .producto--quesos p, .producto--quesos .precio{ color:#6b4412; }
-.producto--quesos button{ background:#d9a441; }
-
-/* Mermeladas: berries */
-.producto--mermeladas{ background:#f3d4de; border:2px solid #d97a95; }
-.producto--mermeladas h3, .producto--mermeladas p, .producto--mermeladas .precio{ color:#7a1a3f; }
-.producto--mermeladas button{ background:#b3395d; }
-
-/* Huevos: beige */
-.producto--huevos{ background:#f0e6d2; border:2px solid #d8c8a4; }
-.producto--huevos h3, .producto--huevos p, .producto--huevos .precio{ color:#5c4a1e; }
-.producto--huevos button{ background:#b8a06a; }
-
-/* Encurtidos: aceite de oliva */
-.producto--encurtidos{ background:#d8dba0; border:2px solid #a8ab5f; }
-.producto--encurtidos h3, .producto--encurtidos p, .producto--encurtidos .precio{ color:#3f4a1f; }
-.producto--encurtidos button{ background:#7d8a3f; }
-
-/* Frutos secos y semillas: café */
-.producto--frutos-secos{ background:#d9b48f; border:2px solid #b9895f; }
-.producto--frutos-secos h3, .producto--frutos-secos p, .producto--frutos-secos .precio{ color:#2e1b0f; }
-.producto--frutos-secos button{ background:#6b4a30; }
+.producto--quesos, .producto--mermeladas, .producto--huevos,
+.producto--encurtidos, .producto--frutos-secos, .producto--default {
+background:var(--crema); border:2px solid var(--azul-linea); border-top:5px solid var(--azul-acento);
+}
+.producto--quesos h3, .producto--quesos p, .producto--quesos .precio,
+.producto--mermeladas h3, .producto--mermeladas p, .producto--mermeladas .precio,
+.producto--huevos h3, .producto--huevos p, .producto--huevos .precio,
+.producto--encurtidos h3, .producto--encurtidos p, .producto--encurtidos .precio,
+.producto--frutos-secos h3, .producto--frutos-secos p, .producto--frutos-secos .precio { color:var(--ink); }
+.producto--quesos .precio, .producto--mermeladas .precio, .producto--huevos .precio,
+.producto--encurtidos .precio, .producto--frutos-secos .precio { color:var(--azul); }
 
 body{
-background: #fdf6e8;
+background: var(--papel);
+}
+
+.resenas-producto {
+  margin-top: 12px;
+  border-top: 1px solid var(--azul-linea, #ddd);
+  padding-top: 10px;
+}
+
+.resenas-producto__toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: var(--azul-dark, #1a5276);
+  font-weight: 600;
+}
+
+.resenas-producto__total {
+  color: #777;
+  font-weight: 400;
+}
+
+.resenas-producto__panel {
+  margin-top: 10px;
+}
+
+.resenas-producto__lista {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 12px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.resenas-producto__vacio {
+  color: #777;
+  font-size: 0.85rem;
+}
+
+.resena-item {
+  background: #fff;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 0.85rem;
+}
+
+.resena-item__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.resena-item__estrellas {
+  color: #d9a441;
+  letter-spacing: 1px;
+}
+
+.resena-item__cliente {
+  font-weight: 600;
+  color: var(--ink, #333);
+}
+
+.resena-item__comentario {
+  margin: 4px 0;
+  color: #444;
+}
+
+.resena-item__fecha {
+  font-size: 0.75rem;
+  color: #999;
+}
+
+.resenas-producto__login {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.resenas-producto__login a {
+  color: var(--azul, #2874a6);
+  font-weight: 600;
+}
+
+.form-resena {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.form-resena__label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.form-resena__estrellas {
+  display: flex;
+  gap: 4px;
+}
+
+.estrella-input {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  color: #ccc;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.estrella-input--activa {
+  color: #d9a441;
+}
+
+.form-resena__comentario {
+  width: 100%;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  padding: 8px;
+  font-size: 0.85rem;
+  resize: vertical;
+  min-height: 50px;
+}
+
+.form-resena__enviar {
+  align-self: flex-start;
+  background: var(--azul, #2874a6);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  width: auto;
+}
+
+.form-resena__mensaje {
+  font-size: 0.8rem;
+  color: var(--azul-dark, #1a5276);
+  margin: 0;
 }
 </style>

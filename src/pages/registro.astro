@@ -28,8 +28,19 @@ if (Astro.locals.cliente) {
         </div>
 
         <div class="campo">
-          <label for="telefono">Teléfono</label>
-          <input type="tel" id="telefono" name="telefono" required />
+          <label for="telefono">Teléfono (+56)</label>
+          <input
+            type="tel"
+            id="telefono"
+            name="telefono"
+            inputmode="numeric"
+            pattern="[0-9]{9}"
+            minlength="9"
+            maxlength="9"
+            placeholder="9 1234 5678"
+            title="Ingresa un teléfono chileno de 9 dígitos, sin espacios ni símbolos"
+            required
+          />
         </div>
 
         <div class="campo">
@@ -54,11 +65,16 @@ if (Astro.locals.cliente) {
   import { sanitizarRutEnVivo } from '../lib/rut.js';
 
   const rutInput = document.getElementById('rut');
+  const telefonoInput = document.getElementById('telefono');
   const rutAviso = document.getElementById('rut-aviso');
   let rutYaRegistrado = false;
 
   rutInput.addEventListener('input', () => {
     rutInput.value = sanitizarRutEnVivo(rutInput.value);
+  });
+
+  telefonoInput.addEventListener('input', () => {
+    telefonoInput.value = telefonoInput.value.replace(/\D/g, '').slice(0, 9);
   });
 
   rutInput.addEventListener('blur', async () => {

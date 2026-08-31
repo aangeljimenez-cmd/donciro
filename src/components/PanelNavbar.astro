@@ -5,6 +5,7 @@ const rutas = [
   { href: '/inventario', label: 'Toma de inventario' },
   { href: '/pedidos', label: 'Pedidos' },
   { href: '/historial-pedidos', label: 'Historial de pedidos' },
+  { href: '/panel-resenas', label: 'Reseñas' },
 ];
 
 const rutaActual = Astro.url.pathname;
@@ -24,6 +25,7 @@ const rutaActual = Astro.url.pathname;
       </li>
     ))}
   </ul>
+  <a href="/" class="panel-navbar__cliente">Ir al panel cliente</a>
 </nav>
 
 <style>
@@ -34,7 +36,7 @@ const rutaActual = Astro.url.pathname;
   flex-wrap: wrap;
   gap: 12px;
   padding: 14px 20px;
-  background: #1f2937;
+  background: var(--azul-dark);
   color: #fff;
 }
 .panel-navbar__marca {
@@ -54,18 +56,34 @@ const rutaActual = Astro.url.pathname;
   display: inline-block;
   padding: 8px 12px;
   border-radius: 6px;
-  color: #d1d5db;
+  color: #D8E9F7;
   text-decoration: none;
   font-size: 0.9rem;
   transition: background 0.15s, color 0.15s;
 }
 .panel-navbar__link:hover {
-  background: #374151;
+  background: #14487A;
   color: #fff;
 }
 .panel-navbar__link--activo {
-  background: #2563eb;
+  background: var(--azul-acento);
   color: #fff;
   font-weight: 600;
+}
+.panel-navbar__cliente {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid #D8E9F7;
+  color: #fff;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.panel-navbar__cliente:hover {
+  background: #D8E9F7;
+  color: var(--azul-dark);
 }
 </style>

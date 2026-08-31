@@ -47,18 +47,41 @@ function formatearMonto(monto) {
           ) : (
             <div class="lista-pedidos">
               {pedidos.map((p) => (
-                <a class={`pedido-card pedido-card--${p.estado}`} href={`/seguimiento?codigo=${p.codigo}`}>
-                  <div class="pedido-card__header">
-                    <span class="pedido-card__id">Pedido #{p.id}</span>
-                    <span class={`pedido-card__estado pedido-card__estado--${p.estado}`}>
-                      {ESTADOS_LABEL[p.estado] ?? p.estado}
-                    </span>
-                  </div>
-                  <div class="pedido-card__body">
-                    <span class="pedido-card__fecha">{formatearFecha(p.created_at)}</span>
-                    <span class="pedido-card__total">{formatearMonto(p.total)}</span>
-                  </div>
-                </a>
+                <div class={`pedido-card pedido-card--${p.estado}`}>
+                  <a class="pedido-card__link" href={`/seguimiento?codigo=${p.codigo}`}>
+                    <div class="pedido-card__header">
+                      <span class="pedido-card__id">Pedido #{p.id}</span>
+                      <span class={`pedido-card__estado pedido-card__estado--${p.estado}`}>
+                        {ESTADOS_LABEL[p.estado] ?? p.estado}
+                      </span>
+                    </div>
+                    <div class="pedido-card__body">
+                      <span class="pedido-card__fecha">{formatearFecha(p.created_at)}</span>
+                      <span class="pedido-card__total">{formatearMonto(p.total)}</span>
+                    </div>
+                  </a>
+
+                  {p.estado === 'entregado' && (
+                    p.atencion_calificada ? (
+                      <p class="pedido-card__calificado">✅ Ya calificaste la atención de este pedido</p>
+                    ) : (
+                      <div class="calificar-atencion" data-pedido-id={p.id}>
+                        <button type="button" class="calificar-atencion__toggle">Calificar atención recibida</button>
+                        <form class="form-resena form-resena--atencion" hidden>
+                          <p class="form-resena__label">¿Cómo fue la atención?</p>
+                          <div class="form-resena__estrellas" data-valor="0">
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <button type="button" class="estrella-input" data-valor={n} aria-label={`${n} estrellas`}>★</button>
+                            ))}
+                          </div>
+                          <textarea class="form-resena__comentario" maxlength="600" placeholder="Cuéntanos tu experiencia (opcional)"></textarea>
+                          <button type="submit" class="form-resena__enviar">Enviar</button>
+                          <p class="form-resena__mensaje" hidden></p>
+                        </form>
+                      </div>
+                    )
+                  )}
+                </div>
               ))}
             </div>
           )}
@@ -172,6 +195,58 @@ function formatearMonto(monto) {
       window.location.reload();
     });
   }
+
+  // --- Calificación de atención al cliente por pedido ---
+  document.querySelectorAll('.calificar-atencion').forEach((contenedor) => {
+    const pedidoId = Number(contenedor.dataset.pedidoId);
+    const toggle = contenedor.querySelector('.calificar-atencion__toggle');
+    const form = contenedor.querySelector('.form-resena--atencion');
+    const grupoEstrellas = form.querySelector('.form-resena__estrellas');
+    const botonesEstrella = Array.from(grupoEstrellas.querySelectorAll('.estrella-input'));
+
+    toggle.addEventListener('click', () => {
+      form.hidden = !form.hidden;
+    });
+
+    botonesEstrella.forEach((boton) => {
+      boton.addEventListener('click', () => {
+        grupoEstrellas.dataset.valor = boton.dataset.valor;
+        botonesEstrella.forEach((b) => b.classList.toggle('estrella-input--activa', Number(b.dataset.valor) <= Number(boton.dataset.valor)));
+      });
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const mensaje = form.querySelector('.form-resena__mensaje');
+      const calificacion = Number(grupoEstrellas.dataset.valor);
+      const comentario = form.querySelector('.form-resena__comentario').value;
+
+      mensaje.hidden = true;
+      if (!calificacion) {
+        mensaje.textContent = 'Selecciona una calificación de 1 a 5 estrellas.';
+        mensaje.hidden = false;
+        return;
+      }
+
+      const boton = form.querySelector('.form-resena__enviar');
+      boton.disabled = true;
+      try {
+        const res = await fetch('/api/resenas/atencion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pedidoId, calificacion, comentario }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'No se pudo enviar tu calificación.');
+        contenedor.innerHTML = '<p class="pedido-card__calificado">✅ ¡Gracias por tu calificación!</p>';
+      } catch (err) {
+        mensaje.textContent = err.message;
+        mensaje.hidden = false;
+        boton.disabled = false;
+      }
+    });
+  });
 </script>
 
 <style is:global>
@@ -282,9 +357,12 @@ function formatearMonto(monto) {
     border-radius: 16px;
     background: #f4f7fb;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
+  }
+  .pedido-card__link {
+    display: block;
     text-decoration: none;
     color: inherit;
-    transition: box-shadow 0.2s, border-color 0.2s, transform 0.15s;
   }
   .pedido-card--pendiente { background: #fef3e2; border-color: #f5cb8c; }
   .pedido-card--en_preparacion { background: #fdf0dc; border-color: #eab26b; }
@@ -345,5 +423,81 @@ function formatearMonto(monto) {
   }
   .auth-switch a:hover {
     text-decoration: underline;
+  }
+  .calificar-atencion {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed #d6dde6;
+  }
+  .calificar-atencion__toggle {
+    background: none;
+    border: 1px solid var(--primary, #007dfa);
+    color: var(--primary, #007dfa);
+    border-radius: 8px;
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .calificar-atencion__toggle:hover {
+    background: var(--primary, #007dfa);
+    color: #fff;
+  }
+  .pedido-card__calificado {
+    margin: 10px 0 0;
+    font-size: 0.85rem;
+    color: #16a34a;
+    font-weight: 600;
+  }
+  .form-resena {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .form-resena__label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  .form-resena__estrellas {
+    display: flex;
+    gap: 4px;
+  }
+  .estrella-input {
+    background: none;
+    border: none;
+    font-size: 1.4rem;
+    color: #ccc;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  }
+  .estrella-input--activa {
+    color: #d9a441;
+  }
+  .form-resena__comentario {
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+    padding: 8px;
+    font-size: 0.85rem;
+    resize: vertical;
+    min-height: 50px;
+  }
+  .form-resena__enviar {
+    align-self: flex-start;
+    background: var(--primary, #007dfa);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 0.85rem;
+    cursor: pointer;
+  }
+  .form-resena__mensaje {
+    font-size: 0.8rem;
+    color: var(--text-muted, #666);
+    margin: 0;
   }
 </style>

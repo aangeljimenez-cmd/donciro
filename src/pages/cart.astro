@@ -120,6 +120,15 @@ import Footer from "../components/Footer.astro";
     return `${cantidad} un.`;
   }
 
+  function escaparHTML(valor) {
+    return String(valor ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
   let productosCache = [];
 
   async function render() {
@@ -156,9 +165,9 @@ import Footer from "../components/Footer.astro";
       const tarjeta = document.createElement("div");
       tarjeta.className = `producto producto--${grupo}`;
       tarjeta.innerHTML = `
-        <img src="${producto.imagen || "/src/img/images.jfif"}" alt="${producto.name}" />
+        <img src="${escaparHTML(producto.imagen || "/src/img/images.jfif")}" alt="${escaparHTML(producto.name)}" />
         <div class="producto-info">
-          <h3>${producto.name}</h3>
+          <h3>${escaparHTML(producto.name)}</h3>
           <p class="cantidad-actual">${cantidadTexto}</p>
           <p class="precio">$${subtotal.toLocaleString("es-CL")}</p>
           <div class="cantidad-controles">
@@ -285,7 +294,7 @@ import Footer from "../components/Footer.astro";
         if (i.unidad === "kg") cantidadTexto = `${(i.cantidad * 1000).toFixed(0)} gr`;
         else if (i.unidad === "litro") cantidadTexto = `${(i.cantidad * 1000).toFixed(0)} ml`;
         else cantidadTexto = `${i.cantidad} un.`;
-        return `<p>${i.producto_nombre} — ${cantidadTexto} — $${i.subtotal.toLocaleString("es-CL")}</p>`;
+        return `<p>${escaparHTML(i.producto_nombre)} — ${cantidadTexto} — $${i.subtotal.toLocaleString("es-CL")}</p>`;
       })
       .join("");
 
@@ -372,7 +381,7 @@ import Footer from "../components/Footer.astro";
 }
 
 .carrito-container :global(.btn-cantidad) {
-    background: #30af25;
+    background: var(--azul);
     color: white;
     border: none;
     border-radius: 50%;
@@ -416,13 +425,13 @@ import Footer from "../components/Footer.astro";
 }
 
 /* Quesos: amarillo */
-.carrito-container :global(.producto--quesos){ background:#f7e2a0; border:2px solid #e6c866; }
+.carrito-container :global(.producto--quesos){ background:var(--crema); border:2px solid var(--azul-linea); }
 .carrito-container :global(.producto--quesos h3),
 .carrito-container :global(.producto--quesos p),
 .carrito-container :global(.producto--quesos .precio){ color:#6b4412; }
 
 /* Mermeladas: berries */
-.carrito-container :global(.producto--mermeladas){ background:#f3d4de; border:2px solid #d97a95; }
+.carrito-container :global(.producto--mermeladas){ background:var(--crema); border:2px solid var(--azul-linea); }
 .carrito-container :global(.producto--mermeladas h3),
 .carrito-container :global(.producto--mermeladas p),
 .carrito-container :global(.producto--mermeladas .precio){ color:#7a1a3f; }
@@ -434,13 +443,13 @@ import Footer from "../components/Footer.astro";
 .carrito-container :global(.producto--huevos .precio){ color:#5c4a1e; }
 
 /* Encurtidos: aceite de oliva */
-.carrito-container :global(.producto--encurtidos){ background:#d8dba0; border:2px solid #a8ab5f; }
+.carrito-container :global(.producto--encurtidos){ background:var(--crema); border:2px solid var(--azul-linea); }
 .carrito-container :global(.producto--encurtidos h3),
 .carrito-container :global(.producto--encurtidos p),
 .carrito-container :global(.producto--encurtidos .precio){ color:#3f4a1f; }
 
 /* Frutos secos y semillas: café */
-.carrito-container :global(.producto--frutos-secos){ background:#d9b48f; border:2px solid #b9895f; }
+.carrito-container :global(.producto--frutos-secos){ background:var(--crema); border:2px solid var(--azul-linea); }
 .carrito-container :global(.producto--frutos-secos h3),
 .carrito-container :global(.producto--frutos-secos p),
 .carrito-container :global(.producto--frutos-secos .precio){ color:#2e1b0f; }
@@ -531,4 +540,22 @@ import Footer from "../components/Footer.astro";
     font-size: 1.2rem;
     font-weight: bold;
 }
+
+/* Identidad azul consistente con el catálogo y el checkout. */
+.carrito-container :global(.producto) { background: var(--crema); border: 1px solid var(--azul-linea); }
+.carrito-container :global(.btn-cantidad) { background: var(--azul); }
+.carrito-container :global(.btn-cantidad:disabled) { background: var(--azul-linea); }
+.carrito-container :global(.producto--quesos), .carrito-container :global(.producto--mermeladas),
+.carrito-container :global(.producto--huevos), .carrito-container :global(.producto--encurtidos),
+.carrito-container :global(.producto--frutos-secos) { background: var(--crema); border: 2px solid var(--azul-linea); border-top: 5px solid var(--azul-acento); }
+.carrito-container :global(.producto--quesos h3), .carrito-container :global(.producto--quesos p),
+.carrito-container :global(.producto--mermeladas h3), .carrito-container :global(.producto--mermeladas p),
+.carrito-container :global(.producto--huevos h3), .carrito-container :global(.producto--huevos p),
+.carrito-container :global(.producto--encurtidos h3), .carrito-container :global(.producto--encurtidos p),
+.carrito-container :global(.producto--frutos-secos h3), .carrito-container :global(.producto--frutos-secos p) { color: var(--ink); }
+.carrito-container :global(.producto .precio) { color: var(--azul); }
+.datos-entrega { border-color: var(--linea); }
+.datos-entrega input, .datos-entrega textarea { border-color: var(--azul-linea); }
+.ticket { background: var(--crema); border-color: var(--azul-light); }
+.carrito-container :global(.btn-cantidad) { background: var(--azul); }
 </style>

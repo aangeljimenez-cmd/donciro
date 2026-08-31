@@ -8,14 +8,17 @@
 
 :root {
   /* Paleta — azul como color dominante de marca */
-  --ink: #16232F;          /* texto principal, tono azul-carbón */
-  --azul: #14487A;         /* azul marino — primario, predomina en el sitio */
-  --azul-dark: #0B2E52;    /* azul oscuro — navbar/hover/footer */
-  --azul-light: #4A7FB5;   /* azul claro — hovers suaves, detalles */
-  --oro: #B8862E;          /* oro viejo — acento cálido de contraste (CTA) */
-  --oro-hover: #9C7326;
-  --vino: #7A2E3B;         /* vino/berries — acento secundario (mermeladas) */
-  --papel: #F2F5F9;        /* fondo general, gris-azulado muy claro */
+  --ink: #132B3A;          /* texto principal, azul petróleo */
+  --azul: #0F4C81;         /* azul atlántico — color predominante */
+  --azul-dark: #082B4A;    /* azul profundo — navegación y contraste */
+  --azul-light: #4C91B5;   /* azul bruma — detalles */
+  --azul-acento: #2AA198;  /* turquesa — acento fresco y moderno */
+  --azul-suave: #E6F1F5;   /* azul verdoso muy claro — superficies */
+  --azul-linea: #B8D4DD;   /* borde azul grisáceo */
+  --oro: #D08B4C;          /* cobre suave — detalles de valor */
+  --oro-hover: #AB6834;
+  --vino: #2AA198;         /* compatibilidad: turquesa */
+  --papel: #F3F7F8;        /* fondo general, blanco azulado */
   --crema: #FFFFFF;        /* superficies / tarjetas */
   --linea: #DCE3EC;        /* bordes sutiles */
   --texto-muted: #56636F;
@@ -25,15 +28,16 @@
   --primary-dark: var(--azul-dark);
   --accent: var(--oro);
   --accent-hover: var(--oro-hover);
-  --accent-light: #E8C77A;
+  --accent-light: #A7DED9;
   --bg-main: var(--papel);
   --bg-surface: var(--crema);
   --text-dark: var(--ink);
   --text-muted: var(--texto-muted);
 
-  --shadow-sm: 0 2px 8px rgba(30, 42, 31, 0.08);
-  --shadow-md: 0 10px 25px rgba(30, 42, 31, 0.12);
+  --shadow-sm: 0 2px 8px rgba(11, 46, 82, 0.10);
+  --shadow-md: 0 12px 28px rgba(11, 46, 82, 0.16);
   --radius: 16px;
+  --radius-lg: 24px;
 }
 
 *, *::before, *::after {
@@ -44,7 +48,10 @@
 }
 
 body {
-  background-color: var(--bg-main);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(42, 161, 152, 0.15), transparent 25rem),
+    radial-gradient(circle at 92% 12%, rgba(208, 139, 76, 0.10), transparent 20rem),
+    linear-gradient(180deg, #F9FBFB 0%, var(--bg-main) 42rem);
   color: var(--text-dark);
   line-height: 1.65;
   display: flex;
@@ -70,8 +77,8 @@ h1, h2, h3, .navbar-brand {
 
 /* ======== NAVBAR ======== */
 .navbar {
-  background: var(--azul-dark);
-  box-shadow: var(--shadow-sm);
+  background: linear-gradient(105deg, #061F35, var(--azul-dark) 55%, #0F5D73);
+  box-shadow: 0 5px 20px rgba(7, 35, 63, 0.24);
   padding: 1rem 0;
   position: sticky;
   top: 0;
@@ -91,6 +98,19 @@ h1, h2, h3, .navbar-brand {
   font-weight: 700;
   color: var(--crema);
   text-decoration: none;
+  letter-spacing: -0.03em;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.navbar-brand::before {
+  content: "";
+  width: 0.7rem;
+  height: 0.7rem;
+  border: 2px solid var(--azul-acento);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px rgba(42, 161, 152, 0.16);
 }
 
 .nav-links {
@@ -106,11 +126,49 @@ h1, h2, h3, .navbar-brand {
   text-decoration: none;
   font-size: 0.98rem;
   font-weight: 500;
+  padding: 0.45rem 0.1rem;
+  position: relative;
   transition: color 0.25s ease;
 }
 
 .nav-link:hover {
   color: var(--accent-light);
+}
+
+.nav-link::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0.1rem;
+  left: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--azul-acento);
+  transform: scaleX(0);
+  transition: transform 0.2s ease;
+}
+
+.nav-link:hover::after { transform: scaleX(1); }
+
+.nav-toggle {
+  display: none;
+  border: 1px solid rgba(169, 210, 243, 0.45);
+  border-radius: 10px;
+  padding: 0.55rem;
+  background: rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+}
+
+.nav-toggle span { display: block; width: 22px; height: 2px; margin: 4px 0; background: #fff; border-radius: 2px; }
+
+.nav-link:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+a:focus-visible {
+  outline: 3px solid #8DC7F2;
+  outline-offset: 3px;
 }
 
 /* ======== HERO ======== */
@@ -120,7 +178,7 @@ h1, h2, h3, .navbar-brand {
     url("https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=1500&q=80");
   background-position: center;
   background-size: cover;
-  min-height: 60vh;
+  min-height: 64vh;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -129,21 +187,31 @@ h1, h2, h3, .navbar-brand {
   padding: 2rem;
 }
 
+.hero h1 {
+  font-size: clamp(2.3rem, 5vw, 4.5rem);
+  line-height: 1.06;
+  text-shadow: 0 3px 18px rgba(0, 24, 48, 0.35);
+}
+
+.hero p { max-width: 680px; margin-inline: auto; color: rgba(255, 255, 255, 0.92); }
+
 .btn-principal {
-  display: inline-block;
-  background-color: var(--accent);
-  color: var(--ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--azul), var(--azul-acento));
+  color: var(--crema);
   padding: 14px 38px;
   border-radius: 50px;
   text-decoration: none;
   font-size: 1.05rem;
   font-weight: 600;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 8px 20px rgba(11, 46, 82, 0.28);
   transition: all 0.25s ease;
 }
 
 .btn-principal:hover {
-  background-color: var(--accent-hover);
+  background: linear-gradient(135deg, #0C3C67, #167D77);
   color: var(--crema);
   transform: translateY(-3px);
 }
@@ -183,9 +251,7 @@ footer p {
 .quesos h3{
     color: var(--azul);
 }
-.quesos h1{
-    color: var(--oro);
-}
+.quesos h1{ color: var(--azul); }
 
 /* ======== PRODUCTOS ======== */
 .card-productos {
@@ -203,7 +269,7 @@ footer p {
   width: 100%;
   background-color: var(--crema);
   border: 1px solid var(--linea);
-  border-radius: var(--radius);
+  border-radius: var(--radius-lg);
   overflow: hidden;
   height: 100%;
   box-shadow: var(--shadow-sm);
@@ -211,8 +277,8 @@ footer p {
 }
 
 .product-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-7px);
+  box-shadow: 0 18px 34px rgba(11, 46, 82, 0.18);
 }
 
 .product-card__image {
@@ -228,6 +294,15 @@ footer p {
   flex-direction: column;
   flex: 1;
   padding: 18px;
+}
+
+.product-card__content::before {
+  content: "";
+  width: 36px;
+  height: 3px;
+  border-radius: 4px;
+  background: var(--azul-acento);
+  margin-bottom: 0.8rem;
 }
 
 .product-card__title {
@@ -256,94 +331,51 @@ footer p {
     margin-top: 0.75rem;
     padding: 0.6rem 1rem;
     border: none;
-    border-radius: 8px;
+    border-radius: 10px;
     font-weight: 600;
     cursor: pointer;
     width: 100%;
     background-color: var(--azul);
     color: var(--crema);
-    transition: opacity 0.2s, background-color 0.2s;
+    box-shadow: 0 5px 12px rgba(11, 46, 82, 0.16);
+    transition: opacity 0.2s, background-color 0.2s, transform 0.2s;
 }
-.btn-comprar:hover { background-color: var(--azul-dark); opacity: 1; }
+.btn-comprar:hover { background-color: var(--azul-dark); opacity: 1; transform: translateY(-2px); }
 .btn-comprar:disabled { opacity: 0.55; cursor: default; }
 
 /* Cada categoría conserva un acento propio pero sobre la misma
    tarjeta base color crema — antes cada una tenía un fondo pastel
    distinto; ahora el acento vive en el borde superior y el botón. */
 
-.quesos-container .product-card {
-    border-top: 4px solid var(--oro);
-}
+/* Todas las categorías usan la misma identidad de marca: el producto es el protagonista. */
+.quesos-container .product-card,
+.mermeladas-container .product-card,
+.huevos-container .product-card,
+.encurtidos-container .product-card,
+.frutos-secos-container .product-card { border-top: 4px solid var(--azul-acento); }
+
 .quesos-container .product-card__price-label,
-.quesos-container .product-card__price-value {
-    color: var(--oro-hover);
-}
-.quesos-container .btn-comprar {
-    background-color: var(--oro);
-}
-.quesos-container .btn-comprar:hover {
-    background-color: var(--oro-hover);
-}
-
-.mermeladas-container .product-card {
-    border-top: 4px solid var(--vino);
-}
+.quesos-container .product-card__price-value,
 .mermeladas-container .product-card__price-label,
-.mermeladas-container .product-card__price-value {
-    color: var(--vino);
-}
-.mermeladas-container .btn-comprar {
-    background-color: var(--vino);
-}
-.mermeladas-container .btn-comprar:hover {
-    background-color: #5E2430;
-}
-
-.huevos-container .product-card {
-    border-top: 4px solid #C9A227;
-}
+.mermeladas-container .product-card__price-value,
 .huevos-container .product-card__price-label,
-.huevos-container .product-card__price-value {
-    color: #8A6C13;
-}
-.huevos-container .btn-comprar {
-    background-color: #B8973A;
-}
-.huevos-container .btn-comprar:hover {
-    background-color: #9A7C2E;
-}
-
-.encurtidos-container .product-card {
-    border-top: 4px solid #5C7A4A;
-}
+.huevos-container .product-card__price-value,
 .encurtidos-container .product-card__price-label,
-.encurtidos-container .product-card__price-value {
-    color: #435B36;
-}
-.encurtidos-container .btn-comprar {
-    background-color: #5C7A4A;
-}
-.encurtidos-container .btn-comprar:hover {
-    background-color: #435B36;
-}
-
-/* Frutos secos: tonos tierra, ahora unificados en la misma tarjeta base */
-.frutos-secos-container .product-card:nth-child(5n+1) { border-top: 4px solid #C9A26B; }
-.frutos-secos-container .product-card:nth-child(5n+2) { border-top: 4px solid #8C6142; }
-.frutos-secos-container .product-card:nth-child(5n+3) { border-top: 4px solid #D9B48F; }
-.frutos-secos-container .product-card:nth-child(5n+4) { border-top: 4px solid #6B4A30; }
-.frutos-secos-container .product-card:nth-child(5n+5) { border-top: 4px solid #B98554; }
-
+.encurtidos-container .product-card__price-value,
 .frutos-secos-container .product-card__price-label,
-.frutos-secos-container .product-card__price-value {
-    color: #6B4A30;
-}
-.frutos-secos-container .btn-comprar {
-    background-color: #6B4A30;
-}
-.frutos-secos-container .btn-comprar:hover {
-    background-color: #543A26;
-}
+.frutos-secos-container .product-card__price-value { color: var(--azul); }
+
+.quesos-container .btn-comprar,
+.mermeladas-container .btn-comprar,
+.huevos-container .btn-comprar,
+.encurtidos-container .btn-comprar,
+.frutos-secos-container .btn-comprar { background-color: var(--azul); }
+
+.quesos-container .btn-comprar:hover,
+.mermeladas-container .btn-comprar:hover,
+.huevos-container .btn-comprar:hover,
+.encurtidos-container .btn-comprar:hover,
+.frutos-secos-container .btn-comprar:hover { background-color: var(--azul-dark); }
 
 .cantidad-selector {
     display: flex;
@@ -395,6 +427,10 @@ footer p {
     padding: 16px;
     gap: 1rem;
   }
+  .nav-toggle { display: block; }
+  .navbar .container { flex-direction: row; justify-content: space-between; }
+  .nav-links { display: none; width: 100%; padding-top: 0.5rem; }
+  .nav-links--abierto { display: flex; flex-direction: column; align-items: center; }
 }
 
 @media (max-width: 480px) {

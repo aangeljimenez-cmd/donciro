@@ -12,9 +12,8 @@ import Footer from "../components/Footer.astro";
     <div class="contenido">
         <h1> Bienvenido a Don Ciro🧀</h1>
         <p>
-            Calidad, tradición y el mejor sabor en productos lácteos.
-            Descubre nuestra variedad de quesos, mantequillas, yogurt,
-            leche y mucho más.
+            Sabor, tradición y la mejor calidad en productos.
+            Descubre nuestra variedad de Quesos, Frutos secos, Huevos, Encurtidos y más.
         </p>
     </div>
 </section>
@@ -91,6 +90,9 @@ import Footer from "../components/Footer.astro";
     align-items:center;
     text-align:center;
     color:white;
+    background:
+      linear-gradient(135deg, rgba(8,43,74,.45), rgba(15,76,129,.28)),
+      url("https://images.unsplash.com/photo-1486297678162-eb2a19b0a32d?auto=format&fit=crop&w=1500&q=80") center / cover;
 }
 
 .contenido{
@@ -134,7 +136,7 @@ import Footer from "../components/Footer.astro";
 
 .btn-secundario{
     background:white;
-    color:#2E7D32;
+    color:var(--azul);
 }
 
 .btn-secundario:hover{
@@ -155,8 +157,9 @@ import Footer from "../components/Footer.astro";
 
 .card{
     text-decoration:none;
-    color:#222;
-    background:white;
+    color:var(--ink);
+    background:var(--crema);
+    border:1px solid var(--azul-linea);
     border-radius:20px;
     padding:30px;
     box-shadow:0 10px 25px rgba(0,0,0,.15);
@@ -165,16 +168,16 @@ import Footer from "../components/Footer.astro";
 
 .card:hover{
     transform:translateY(-10px) scale(1.05);
-    background:#FFFDE7;
+    background:var(--azul-suave);
 }
 
 .card h3{
-    color:#2E7D32;
+    color:var(--azul);
     font-size:1.6rem;
 }
 
 .beneficios{
-    background:#F1F8E9;
+    background:var(--azul-suave);
     padding:70px 20px;
     text-align:center;
 }
@@ -187,7 +190,8 @@ import Footer from "../components/Footer.astro";
 }
 
 .beneficios-grid div{
-    background:white;
+    background:var(--crema);
+    border:1px solid var(--azul-linea);
     border-radius:20px;
     padding:30px;
     transition:.3s;
