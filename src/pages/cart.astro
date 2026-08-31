@@ -30,17 +30,16 @@ import Footer from "../components/Footer.astro";
                 </div>
                 <p class="direccion-atribucion">Sugerencias de direcciones © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors</p>
 
-                <div class="mapa-ubicacion-wrapper">
-                    <p class="mapa-ubicacion-label">Escribe tu dirección arriba o marca el punto directamente en el mapa; se actualiza en tiempo real mientras escribes:</p>
-                    <div id="mapa-ubicacion" class="mapa-ubicacion"></div>
-                    <input type="hidden" id="cliente-lat" />
-                    <input type="hidden" id="cliente-lng" />
-                </div>
+                <input type="hidden" id="cliente-lat" />
+                <input type="hidden" id="cliente-lng" />
 
                 <div class="verificar-ubicacion">
+                    <button type="button" id="btn-ver-google-maps" class="btn-mapa btn-mapa--google">📍 Ver en Google Maps</button>
                     <button type="button" id="btn-ver-waze" class="btn-mapa btn-mapa--waze">🚗 Ver en Waze</button>
+                    <button type="button" id="btn-usar-gps" class="btn-mapa btn-mapa--gps">📡 Usar mi ubicación GPS</button>
                 </div>
-                <p id="mapa-error" class="mapa-error" style="display:none;">Escribe tu dirección primero para poder verla en Waze.</p>
+                <p id="mapa-error" class="mapa-error" style="display:none;">Escribe tu dirección primero para poder verla en el mapa.</p>
+                <p id="gps-error" class="mapa-error" style="display:none;"></p>
 
                 <p class="datos-entrega__opcional-label">
                     Ingresa tu RUT para acumular tus pedidos, aplicar tu descuento y ver el estado de tu compra después
@@ -82,11 +81,6 @@ import Footer from "../components/Footer.astro";
     <Footer />
 </MainLayout>
 
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-<script is:inline src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-
 <script>
   import { getCart, removeFromCart, clearCart, updateQuantity } from "../lib/cart.js";
   import { sanitizarRutEnVivo } from "../lib/rut.js";
@@ -103,10 +97,13 @@ import Footer from "../components/Footer.astro";
     rutInput.value = sanitizarRutEnVivo(rutInput.value);
   });
 
-  // --- Verificar dirección en Waze (Google Maps se reemplazó por el mapa interactivo de abajo) ---
+  // --- Verificar dirección en Google Maps / Waze ---
   const direccionInput = document.getElementById("cliente-direccion");
+  const btnGoogleMaps = document.getElementById("btn-ver-google-maps");
   const btnWaze = document.getElementById("btn-ver-waze");
   const mapaError = document.getElementById("mapa-error");
+  const latInput = document.getElementById("cliente-lat");
+  const lngInput = document.getElementById("cliente-lng");
 
   function abrirMapa(construirUrl) {
     const direccion = direccionInput.value.trim();
@@ -119,63 +116,70 @@ import Footer from "../components/Footer.astro";
     window.open(construirUrl(direccion), "_blank", "noopener,noreferrer");
   }
 
+  btnGoogleMaps.addEventListener("click", () => {
+    abrirMapa((direccion) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(direccion)}`);
+  });
+
   btnWaze.addEventListener("click", () => {
     abrirMapa((direccion) => `https://waze.com/ul?q=${encodeURIComponent(direccion)}&navigate=yes`);
   });
 
-  // --- Mapa interactivo para marcar la ubicación exacta (Leaflet + OpenStreetMap, gratuito) ---
-  // Se muestra siempre, aunque el cliente no haya escrito nada en el campo de dirección:
-  // así puede marcar directamente el punto en el mapa y esa ubicación queda guardada en el pedido.
-  const latInput = document.getElementById("cliente-lat");
-  const lngInput = document.getElementById("cliente-lng");
-  const CENTRO_MAPA_DEFECTO = [-33.4489, -70.6693]; // Santiago, solo como punto de partida
+  // --- Usar la ubicación GPS del dispositivo ---
+  // Permite guardar la ubicación exacta del cliente en el pedido aunque no haya
+  // escrito ni verificado nada en Google Maps o Waze.
+  const btnUsarGps = document.getElementById("btn-usar-gps");
+  const gpsError = document.getElementById("gps-error");
 
-  const mapaUbicacion = L.map("mapa-ubicacion").setView(CENTRO_MAPA_DEFECTO, 12);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    attribution:
-      '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a> contributors',
-    maxZoom: 19,
-  }).addTo(mapaUbicacion);
-
-  let marcadorUbicacion = null;
-
-  // Mueve (o crea) el pin en el mapa, centra la vista y guarda las coordenadas en los
-  // inputs ocultos — esto es lo que efectivamente queda registrado en el pedido.
-  function actualizarMarcador(latlng) {
-    if (marcadorUbicacion) {
-      marcadorUbicacion.setLatLng(latlng);
-    } else {
-      marcadorUbicacion = L.marker(latlng, { draggable: true }).addTo(mapaUbicacion);
-      marcadorUbicacion.on("dragend", () => manejarSeleccionEnMapa(marcadorUbicacion.getLatLng()));
+  btnUsarGps.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      gpsError.textContent = "Tu navegador no permite obtener la ubicación GPS.";
+      gpsError.style.display = "block";
+      return;
     }
-    mapaUbicacion.setView(latlng, Math.max(mapaUbicacion.getZoom(), 16));
-    latInput.value = latlng.lat;
-    lngInput.value = latlng.lng;
-  }
 
-  async function manejarSeleccionEnMapa(latlng) {
-    // Cuando el cliente marca el punto directamente en el mapa (clic o arrastrando el
-    // pin) no tenemos el texto de la dirección, así que lo completamos con Nominatim.
-    actualizarMarcador(latlng);
-    try {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}&addressdetails=0`;
-      const res = await fetch(url, { headers: { Accept: "application/json" } });
-      if (!res.ok) return;
-      const lugar = await res.json();
-      if (lugar && lugar.display_name) {
-        direccionInput.value = lugar.display_name;
-        ocultarSugerencias();
-      }
-    } catch {
-      // Si falla la geocodificación inversa igual queda guardada la coordenada exacta,
-      // solo no se autocompleta el texto de la dirección.
-    }
-  }
+    gpsError.style.display = "none";
+    const textoOriginal = btnUsarGps.textContent;
+    btnUsarGps.disabled = true;
+    btnUsarGps.textContent = "Obteniendo ubicación...";
 
-  mapaUbicacion.on("click", (e) => manejarSeleccionEnMapa(e.latlng));
+    navigator.geolocation.getCurrentPosition(
+      async (posicion) => {
+        const lat = posicion.coords.latitude;
+        const lng = posicion.coords.longitude;
+        // Esto es lo que realmente "guarda" la ubicación: queda en los inputs
+        // ocultos que se envían junto con el resto de los datos del pedido.
+        latInput.value = lat;
+        lngInput.value = lng;
+
+        try {
+          const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=0`;
+          const res = await fetch(url, { headers: { Accept: "application/json" } });
+          if (res.ok) {
+            const lugar = await res.json();
+            if (lugar && lugar.display_name) {
+              direccionInput.value = lugar.display_name;
+              ocultarSugerencias();
+            }
+          }
+        } catch {
+          // Si falla la geocodificación inversa igual queda guardada la coordenada
+          // exacta, solo no se autocompleta el texto de la dirección.
+        } finally {
+          btnUsarGps.disabled = false;
+          btnUsarGps.textContent = textoOriginal;
+        }
+      },
+      () => {
+        gpsError.textContent = "No se pudo obtener tu ubicación GPS. Revisa los permisos de ubicación del navegador.";
+        gpsError.style.display = "block";
+        btnUsarGps.disabled = false;
+        btnUsarGps.textContent = textoOriginal;
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  });
 
   // --- Autocompletado de direcciones (OpenStreetMap Nominatim, gratuito) ---
-  // Este mismo buscador es el que refleja la ubicación en tiempo real sobre el mapa.
   const sugerenciasLista = document.getElementById("direccion-sugerencias");
   let temporizadorBusqueda = null;
   let controladorBusqueda = null;
@@ -207,13 +211,6 @@ import Footer from "../components/Footer.astro";
       li.textContent = texto;
     });
     sugerenciasLista.hidden = false;
-
-    // Reflejo en tiempo real: mientras el cliente escribe, el mapa se mueve solo al
-    // resultado más probable (el primero de la lista), sin esperar a que haga clic.
-    const primerResultado = lugares[0];
-    if (primerResultado && primerResultado.lat != null && primerResultado.lon != null) {
-      actualizarMarcador({ lat: Number(primerResultado.lat), lng: Number(primerResultado.lon) });
-    }
   }
 
   async function consultarNominatim(texto, signal) {
@@ -280,10 +277,11 @@ import Footer from "../components/Footer.astro";
     const resultado = ultimosResultadosBusqueda[indice];
     direccionInput.value = item.textContent;
     direccionSeleccionadaManualmente = true;
-    // El resultado elegido puede no ser el primero (el que ya se mostraba de vista
-    // previa), así que movemos el pin a las coordenadas exactas de este.
+    // Guardamos también las coordenadas del resultado elegido, aunque no haya
+    // mapa visible, para que queden registradas en el pedido.
     if (resultado && resultado.lat != null && resultado.lon != null) {
-      actualizarMarcador({ lat: Number(resultado.lat), lng: Number(resultado.lon) });
+      latInput.value = Number(resultado.lat);
+      lngInput.value = Number(resultado.lon);
     }
     ocultarSugerencias();
   });
@@ -762,23 +760,6 @@ import Footer from "../components/Footer.astro";
 .direccion-atribucion a {
     color: #999;
 }
-.mapa-ubicacion-wrapper {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-.mapa-ubicacion-label {
-    font-size: 0.85rem;
-    color: #666;
-    margin: 0;
-}
-.mapa-ubicacion {
-    height: 260px;
-    width: 100%;
-    border-radius: 8px;
-    border: 1px solid #ccc;
-    z-index: 1; /* para que no quede sobre las sugerencias de dirección */
-}
 .verificar-ubicacion {
     display: flex;
     gap: 10px;
@@ -797,6 +778,10 @@ import Footer from "../components/Footer.astro";
     cursor: pointer;
     transition: background 0.15s, color 0.15s, border-color 0.15s;
 }
+.btn-mapa:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+}
 .btn-mapa--google {
     color: #1a73e8;
     border-color: #cfe0fb;
@@ -811,6 +796,14 @@ import Footer from "../components/Footer.astro";
 }
 .btn-mapa--waze:hover {
     background: #05c8f7;
+    color: #fff;
+}
+.btn-mapa--gps {
+    color: #2e7d32;
+    border-color: #c8e6c9;
+}
+.btn-mapa--gps:hover:not(:disabled) {
+    background: #2e7d32;
     color: #fff;
 }
 .mapa-error {
